@@ -1,0 +1,544 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * Design system definition.
+ *
+ * The @theme inline block maps CSS custom properties to Tailwind utility
+ * classes (e.g. --color-primary -> bg-primary, text-primary).
+ *
+ * The :root and .dark blocks define the actual color values using oklch.
+ * All colors MUST use oklch format.
+ *
+ * To add a new semantic color:
+ * 1. Add the variable to :root (light value) and .dark (dark value)
+ * 2. Register it in @theme inline as --color-<name>: var(--<name>)
+ */
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ring-offset-background: var(--background);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-butter: var(--butter);
+  --color-amber: var(--amber);
+  --color-matcha: var(--matcha);
+  --color-terracotta: var(--terracotta);
+  --color-blue: var(--blue);
+  --color-cream: var(--cream);
+  --color-sand: var(--sand);
+  --color-warm-brown: var(--warm-brown);
+  --font-heading: var(--font-heading);
+  --font-body: var(--font-body);
+}
+
+:root {
+  --radius: 0.85rem;
+  --font-heading: "Lora", ui-serif, Georgia, serif;
+  --font-body: "Nunito Sans", ui-sans-serif, system-ui, sans-serif;
+
+  /* Exquisite Warm Parisian Oat Cream, Golden Honey Crema & Roast Espresso Palette */
+  --background: oklch(0.985 0.008 75);      /* Soft warm oat milk cream #FAF7F2 */
+  --foreground: oklch(0.20 0.035 50);       /* Deep velvet espresso #1E140E */
+  --card: oklch(0.998 0.003 75);             /* Pure warm porcelain white #FEFCF9 */
+  --card-foreground: oklch(0.20 0.035 50);
+  --popover: oklch(0.998 0.003 75);
+  --popover-foreground: oklch(0.20 0.035 50);
+  --primary: oklch(0.68 0.165 68);          /* Rich Honey Crema Gold #C97616 */
+  --primary-foreground: oklch(0.99 0.005 75);/* Crisp cream white */
+  --secondary: oklch(0.945 0.015 75);       /* Steamed milk linen #EFE8DE */
+  --secondary-foreground: oklch(0.22 0.035 50);
+  --muted: oklch(0.938 0.012 75);           /* Warm sand linen #ECE4D8 */
+  --muted-foreground: oklch(0.46 0.032 55); /* Roast coffee slate #665548 */
+  --accent: oklch(0.92 0.04 78);            /* Honey glaze #F5E5CE */
+  --accent-foreground: oklch(0.20 0.035 50);
+  --destructive: oklch(0.58 0.22 28);
+  --destructive-foreground: oklch(0.98 0.01 80);
+  --border: oklch(0.89 0.015 75);           /* Soft warm bisque #DFD4C4 */
+  --input: oklch(0.89 0.015 75);
+  --ring: oklch(0.68 0.165 68);
+
+  /* Artisan Brand Accent Tokens for Light Mode */
+  --butter: oklch(0.68 0.165 68);           /* Honey amber #C97616 */
+  --amber: oklch(0.62 0.18 55);             /* Toasted caramel #B95E13 */
+  --matcha: oklch(0.46 0.135 142);          /* Uji green tea #3C6D38 */
+  --terracotta: oklch(0.54 0.165 38);       /* Victorian terracotta #B84A30 */
+  --blue: oklch(0.50 0.12 240);
+  --cream: oklch(0.965 0.012 75);           /* Warm milk cream #F5EFE6 */
+  --sand: oklch(0.94 0.018 75);             /* Warm oat sand #ECE2D4 */
+  --warm-brown: oklch(0.18 0.035 50);       /* Deep espresso #1A120C */
+
+  /* Chart tokens */
+  --chart-1: oklch(0.68 0.165 68);
+  --chart-2: oklch(0.62 0.18 55);
+  --chart-3: oklch(0.54 0.165 38);
+  --chart-4: oklch(0.46 0.135 142);
+  --chart-5: oklch(0.5 0.06 50);
+  --sidebar: oklch(0.975 0.01 75);
+  --sidebar-foreground: oklch(0.20 0.035 50);
+  --sidebar-primary: oklch(0.68 0.165 68);
+  --sidebar-primary-foreground: oklch(0.99 0.005 75);
+  --sidebar-accent: oklch(0.94 0.015 75);
+  --sidebar-accent-foreground: oklch(0.20 0.035 50);
+  --sidebar-border: oklch(0.89 0.015 75);
+  --sidebar-ring: oklch(0.68 0.165 68);
+}
+
+.dark {
+  --background: oklch(0.985 0.008 75);
+  --foreground: oklch(0.20 0.035 50);
+  --card: oklch(0.998 0.003 75);
+  --card-foreground: oklch(0.20 0.035 50);
+  --popover: oklch(0.998 0.003 75);
+  --popover-foreground: oklch(0.20 0.035 50);
+  --primary: oklch(0.68 0.165 68);
+  --primary-foreground: oklch(0.99 0.005 75);
+  --secondary: oklch(0.945 0.015 75);
+  --secondary-foreground: oklch(0.22 0.035 50);
+  --muted: oklch(0.938 0.012 75);
+  --muted-foreground: oklch(0.46 0.032 55);
+  --accent: oklch(0.92 0.04 78);
+  --accent-foreground: oklch(0.20 0.035 50);
+  --destructive: oklch(0.58 0.22 28);
+  --destructive-foreground: oklch(0.98 0.01 80);
+  --border: oklch(0.89 0.015 75);
+  --input: oklch(0.89 0.015 75);
+  --ring: oklch(0.68 0.165 68);
+
+  --butter: oklch(0.68 0.165 68);
+  --amber: oklch(0.62 0.18 55);
+  --matcha: oklch(0.46 0.135 142);
+  --terracotta: oklch(0.54 0.165 38);
+  --blue: oklch(0.50 0.12 240);
+  --cream: oklch(0.965 0.012 75);
+  --sand: oklch(0.94 0.018 75);
+  --warm-brown: oklch(0.18 0.035 50);
+
+  --chart-1: oklch(0.68 0.165 68);
+  --chart-2: oklch(0.62 0.18 55);
+  --chart-3: oklch(0.54 0.165 38);
+  --chart-4: oklch(0.46 0.135 142);
+  --chart-5: oklch(0.5 0.06 50);
+  --sidebar: oklch(0.975 0.01 75);
+  --sidebar-foreground: oklch(0.20 0.035 50);
+  --sidebar-primary: oklch(0.68 0.165 68);
+  --sidebar-primary-foreground: oklch(0.99 0.005 75);
+  --sidebar-accent: oklch(0.94 0.015 75);
+  --sidebar-accent-foreground: oklch(0.20 0.035 50);
+  --sidebar-border: oklch(0.89 0.015 75);
+  --sidebar-ring: oklch(0.68 0.165 68);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-family: var(--font-body);
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-heading);
+  }
+}
+
+/* Coffee Button Animations */
+@keyframes coffee-steam-1 {
+  0% {
+    transform: translateY(0) scale(0.8) rotate(0deg);
+    opacity: 0;
+  }
+  35% {
+    opacity: 0.85;
+    transform: translateY(-4px) scale(1.1) rotate(5deg);
+  }
+  70% {
+    opacity: 0.45;
+    transform: translateY(-8px) scale(0.9) rotate(-6deg);
+  }
+  100% {
+    transform: translateY(-13px) scale(1.3) rotate(8deg);
+    opacity: 0;
+  }
+}
+
+@keyframes coffee-steam-2 {
+  0% {
+    transform: translateY(0) scale(0.9) rotate(0deg);
+    opacity: 0;
+  }
+  40% {
+    opacity: 0.9;
+    transform: translateY(-5px) scale(1.2) rotate(-8deg);
+  }
+  80% {
+    opacity: 0.4;
+    transform: translateY(-10px) scale(1) rotate(6deg);
+  }
+  100% {
+    transform: translateY(-16px) scale(1.4) rotate(-10deg);
+    opacity: 0;
+  }
+}
+
+@keyframes coffee-pulse-glow {
+  0%,
+  100% {
+    box-shadow:
+      0 0 16px -2px oklch(0.84 0.165 78 / 0.45),
+      0 4px 18px 0 rgba(0, 0, 0, 0.4);
+  }
+  50% {
+    box-shadow:
+      0 0 30px 6px oklch(0.84 0.165 78 / 0.8),
+      0 6px 24px 2px rgba(0, 0, 0, 0.6);
+  }
+}
+
+@keyframes coffee-shimmer {
+  0% {
+    transform: translateX(-140%) skewX(-25deg);
+  }
+  100% {
+    transform: translateX(260%) skewX(-25deg);
+  }
+}
+
+@keyframes ambient-glow {
+  0%, 100% {
+    opacity: 0.4;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.08);
+  }
+}
+
+.animate-coffee-steam-1 {
+  animation: coffee-steam-1 2.2s infinite ease-out;
+}
+
+.animate-coffee-steam-2 {
+  animation: coffee-steam-2 2.6s infinite ease-out 0.7s;
+}
+
+.animate-coffee-pulse {
+  animation: coffee-pulse-glow 3s infinite ease-in-out;
+}
+
+/* 3D Floating & Depth Keyframe Animations */
+@keyframes float-3d-slow {
+  0%, 100% {
+    transform: translateY(0px) rotateX(0deg) rotateY(0deg) rotateZ(0deg);
+  }
+  25% {
+    transform: translateY(-8px) rotateX(4deg) rotateY(-4deg) rotateZ(1deg);
+  }
+  50% {
+    transform: translateY(-14px) rotateX(0deg) rotateY(6deg) rotateZ(-1deg);
+  }
+  75% {
+    transform: translateY(-6px) rotateX(-4deg) rotateY(2deg) rotateZ(0.5deg);
+  }
+}
+
+@keyframes float-3d-fast {
+  0%, 100% {
+    transform: translateY(0px) rotateZ(0deg);
+  }
+  50% {
+    transform: translateY(-10px) rotateZ(3deg);
+  }
+}
+
+@keyframes float-badge-3d {
+  0%, 100% {
+    transform: translateZ(35px) translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateZ(45px) translateY(-6px) rotate(-1.5deg);
+  }
+}
+
+@keyframes shadow-depth-pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.5;
+  }
+  50% {
+    transform: scale(0.85);
+    opacity: 0.25;
+  }
+}
+
+.animate-float-3d {
+  animation: float-3d-slow 6s infinite ease-in-out;
+}
+
+.animate-float-3d-fast {
+  animation: float-3d-fast 4s infinite ease-in-out;
+}
+
+.animate-float-badge {
+  animation: float-badge-3d 5s infinite ease-in-out;
+}
+
+.animate-shadow-pulse {
+  animation: shadow-depth-pulse 6s infinite ease-in-out;
+}
+
+/* 3D Perspective & Transform Utilities */
+.perspective-800 {
+  perspective: 800px;
+}
+
+.perspective-1000 {
+  perspective: 1000px;
+}
+
+.perspective-1500 {
+  perspective: 1500px;
+}
+
+.preserve-3d {
+  transform-style: preserve-3d;
+}
+
+.backface-hidden {
+  backface-visibility: hidden;
+}
+
+.translate-z-10 {
+  transform: translateZ(10px);
+}
+
+.translate-z-20 {
+  transform: translateZ(20px);
+}
+
+.translate-z-30 {
+  transform: translateZ(30px);
+}
+
+.translate-z-40 {
+  transform: translateZ(40px);
+}
+
+.translate-z-50 {
+  transform: translateZ(50px);
+}
+
+.translate-z-60 {
+  transform: translateZ(60px);
+}
+
+/* 3D Realistic Multi-Layer Shadow System for Light Theme */
+.shadow-3d-card {
+  box-shadow:
+    0 2px 5px rgba(60, 40, 20, 0.04),
+    0 6px 14px rgba(60, 40, 20, 0.06),
+    0 16px 32px -4px rgba(60, 40, 20, 0.08),
+    0 28px 56px -12px rgba(60, 40, 20, 0.06),
+    inset 0 1px 1px rgba(255, 255, 255, 1),
+    inset 0 -1px 2px rgba(60, 40, 20, 0.04);
+}
+
+.shadow-3d-card-hover:hover {
+  box-shadow:
+    0 4px 8px rgba(60, 40, 20, 0.06),
+    0 12px 24px rgba(60, 40, 20, 0.09),
+    0 26px 52px -6px rgba(60, 40, 20, 0.12),
+    0 0 28px 4px rgba(201, 118, 22, 0.16),
+    inset 0 1px 2px rgba(255, 255, 255, 1),
+    inset 0 -1px 2px rgba(60, 40, 20, 0.05);
+}
+
+/* 3D Tactile Golden Button with True Mechanical Press */
+.btn-3d-gold {
+  position: relative;
+  background: linear-gradient(180deg, #FBD982 0%, #F5AB38 45%, #DF7F14 100%);
+  color: #1A120C;
+  border-top: 1px solid rgba(255, 255, 255, 0.9);
+  border-left: 1px solid rgba(255, 255, 255, 0.5);
+  border-right: 1px solid rgba(180, 95, 15, 0.4);
+  border-bottom: 1px solid rgba(140, 65, 5, 0.7);
+  box-shadow:
+    0 4px 0 #A85608,
+    0 6px 0 #7A3B02,
+    0 10px 20px rgba(60, 40, 20, 0.16),
+    0 0 16px rgba(245, 171, 56, 0.25),
+    inset 0 1px 2px rgba(255, 255, 255, 0.8),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: translateY(0);
+}
+
+.btn-3d-gold:hover {
+  filter: brightness(1.04);
+  transform: translateY(-2px);
+  box-shadow:
+    0 6px 0 #A85608,
+    0 8px 0 #7A3B02,
+    0 14px 26px rgba(60, 40, 20, 0.20),
+    0 0 24px rgba(245, 171, 56, 0.35),
+    inset 0 1px 2px rgba(255, 255, 255, 0.9),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.btn-3d-gold:active {
+  transform: translateY(4px);
+  box-shadow:
+    0 1px 0 #A85608,
+    0 2px 0 #7A3B02,
+    0 4px 10px rgba(60, 40, 20, 0.14),
+    0 0 8px rgba(245, 171, 56, 0.2),
+    inset 0 1px 1px rgba(255, 255, 255, 0.5),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* 3D Porcelain Light Glass Embossed Panel */
+.glass-panel-3d {
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.92), rgba(249, 244, 237, 0.85));
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-top: 1px solid rgba(255, 255, 255, 1);
+  border-left: 1px solid rgba(255, 255, 255, 0.8);
+  border-right: 1px solid rgba(215, 200, 180, 0.5);
+  border-bottom: 1px solid rgba(195, 175, 155, 0.55);
+  box-shadow:
+    0 10px 28px -4px rgba(50, 30, 15, 0.06),
+    0 3px 10px rgba(50, 30, 15, 0.03),
+    inset 0 1px 1px rgba(255, 255, 255, 1);
+}
+
+.glass-panel-3d:hover {
+  border-top: 1px solid rgba(255, 255, 255, 1);
+  border-left: 1px solid rgba(255, 255, 255, 0.95);
+  box-shadow:
+    0 18px 42px -6px rgba(50, 30, 15, 0.10),
+    0 6px 16px rgba(50, 30, 15, 0.05),
+    0 0 24px 2px rgba(201, 118, 22, 0.15),
+    inset 0 1px 2px rgba(255, 255, 255, 1);
+}
+
+.gold-gradient-text {
+  background: linear-gradient(135deg, #B55806 0%, #DE7F14 45%, #C2680A 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.gold-gradient-bg {
+  background: linear-gradient(135deg, #FBD982 0%, #F5AB38 50%, #DF7F14 100%);
+}
+
+/* Animated Admin POS Utilities */
+@keyframes admin-card-enter {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(245, 171, 56, 0.7);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 10px rgba(245, 171, 56, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(245, 171, 56, 0);
+  }
+}
+
+@keyframes live-beacon-radar {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-admin-enter {
+  animation: admin-card-enter 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-pulse-ring {
+  animation: pulse-ring 2.5s infinite;
+}
+
+.animate-spin-slow {
+  animation: live-beacon-radar 12s linear infinite;
+}
+
+.admin-card-hover {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.admin-card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 14px 32px -4px rgba(0, 0, 0, 0.5), 0 0 20px rgba(245, 171, 56, 0.2);
+  border-color: rgba(251, 217, 130, 0.4);
+}
+
+
+
