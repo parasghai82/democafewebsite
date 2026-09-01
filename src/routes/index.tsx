@@ -466,7 +466,11 @@ function Hero() {
             </div>
 
             <h1 className="font-heading text-4xl sm:text-6xl lg:text-6xl font-bold leading-[1.1] tracking-tight text-foreground">
-              A historic house that crafts <span className="gold-gradient-text drop-shadow-[0_2px_12px_rgba(201,118,22,0.25)]">unforgettable</span> coffee.
+              A century-old house crafting{" "}
+              <span className="gold-gradient-text drop-shadow-[0_2px_12px_rgba(201,118,22,0.25)]">
+                exceptional
+              </span>{" "}
+              coffee & quiet moments.
             </h1>
             <p className="mt-6 max-w-xl text-base sm:text-lg leading-relaxed text-muted-foreground font-normal">
               Specialty single-origin espresso, ceremonial Uji matcha, Hong Kong milk tea, and fresh
