@@ -102,18 +102,10 @@ export function WebsiteOfflineScreen() {
 
       </main>
 
-      {/* Footer with Staff Admin Link */}
+      {/* Footer */}
       <footer className="p-6 text-center text-xs text-white/40 border-t border-white/10 z-10 flex flex-col sm:flex-row items-center justify-between max-w-5xl mx-auto w-full gap-4">
         <p>© {new Date().getFullYear()} Toronto Cafe. All rights reserved.</p>
-
-        <Link
-          to="/admin"
-          className="inline-flex items-center gap-1.5 text-butter/80 hover:text-butter font-bold transition-colors bg-butter/10 border border-butter/30 px-3.5 py-1.5 rounded-full"
-          title="Staff Portal (Turn Website ON)"
-        >
-          <Lock className="h-3.5 w-3.5" />
-          <span>Staff Login (Turn Website ON)</span>
-        </Link>
+        <p className="text-[11px] text-white/30">Baldwin Village · Toronto, ON</p>
       </footer>
 
     </div>

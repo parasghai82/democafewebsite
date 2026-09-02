@@ -1,3 +1,5 @@
+export type UserRole = "SUPER_ADMIN" | "STAFF_ADMIN";
+
 export interface PasswordStrength {
   score: number; // 0 to 4
   label: "Very Weak" | "Weak" | "Fair" | "Strong" | "Very Strong";
@@ -12,15 +14,26 @@ export interface PasswordStrength {
 export interface SecurityAuditLog {
   id: string;
   timestamp: string;
-  action: "LOGIN_SUCCESS" | "LOGIN_FAILED" | "PASSWORD_CHANGED" | "PIN_RESET" | "LOGOUT";
+  action: "LOGIN_SUCCESS" | "LOGIN_FAILED" | "PASSWORD_CHANGED" | "STAFF_PASSWORD_CHANGED" | "PIN_RESET" | "LOGOUT";
   ipAddress: string;
   userAgent: string;
   details?: string;
+  role?: UserRole;
+}
+
+export interface AdminSession {
+  adminId: string;
+  role: UserRole;
+  token: string;
+  loginAt: number;
+  expiresAt: number;
 }
 
 const STORAGE_KEYS = {
-  ADMIN_ID: "toronto_cafe_admin_id",
-  ADMIN_PASS_HASH: "toronto_cafe_admin_pass_hash",
+  SUPER_ADMIN_ID: "toronto_cafe_super_admin_id",
+  SUPER_ADMIN_PASS_HASH: "toronto_cafe_super_admin_pass_hash",
+  STAFF_ADMIN_ID: "toronto_cafe_staff_admin_id",
+  STAFF_ADMIN_PASS_HASH: "toronto_cafe_staff_admin_pass_hash",
   SECURITY_PIN_HASH: "toronto_cafe_security_pin_hash",
   SESSION: "toronto_cafe_admin_session",
   FAILED_ATTEMPTS: "toronto_cafe_failed_attempts",
@@ -28,11 +41,16 @@ const STORAGE_KEYS = {
   AUDIT_LOGS: "toronto_cafe_audit_logs",
 };
 
-// Default Admin Configuration — No plaintext credentials are ever stored or exposed.
-// Only standard cryptographic SHA-256 hashes are used.
-const DEFAULT_ADMIN_ID = "admin@torontocafe.ca";
-const DEFAULT_PASSWORD_HASH = "d9d8aa66f7b3967389267ab60fbedc406699e6ec699137dd65695b8b13f6ff4f";
+// Default Credentials (Never stored in plaintext — SHA-256 only)
+const DEFAULT_SUPER_ADMIN_ID = "admin@torontocafe.ca";
+// SHA-256 of "Baldwin#Heritage@1998!"
+const DEFAULT_SUPER_PASSWORD_HASH = "d9d8aa66f7b3967389267ab60fbedc406699e6ec699137dd65695b8b13f6ff4f";
+// SHA-256 of "779922"
 const DEFAULT_PIN_HASH = "77c9b1f97b27bafd2d666686133743c62543c1ec2677392ac43f4afdbd63d792";
+
+const DEFAULT_STAFF_ADMIN_ID = "staff@torontocafe.ca";
+// SHA-256 of "CafeStaff#Baldwin98"
+const DEFAULT_STAFF_PASSWORD_HASH = "8879775a2f67872e4edcb813d64b6023599b93d3df4614f1fe811e2f5518bc15";
 
 /**
  * Standard cryptographic SHA-256 hash using Web Crypto with pure JS fallback.
@@ -68,7 +86,7 @@ function jsSha256(ascii: string): string {
   ];
   const wordsLength = (((asciiBitLength + 64) >>> 9) << 4) + 15;
   while (words.length <= wordsLength) words.push(0);
-  for (let i = 0; i < ascii.length; i++) {
+  for (i = 0; i < ascii.length; i++) {
     words[i >> 2] |= (ascii.charCodeAt(i) & 255) << ((3 - (i % 4)) * 8);
   }
   words[i >> 2] |= 0x80 << ((3 - (i % 4)) * 8);
@@ -77,7 +95,7 @@ function jsSha256(ascii: string): string {
     const w = words.slice(j, (j += 16));
     const oldHash = hash.slice(0);
     hash = hash.slice(0, 8);
-    for (let i = 0; i < 64; i++) {
+    for (i = 0; i < 64; i++) {
       const w15 = w[i - 15],
         w2 = w[i - 2];
       const a = hash[0],
@@ -100,11 +118,11 @@ function jsSha256(ascii: string): string {
         ((a & hash[1]) ^ (a & hash[2]) ^ (hash[1] & hash[2]));
       hash = [(temp1 + temp2) | 0, a, hash[1], hash[2], (hash[3] + temp1) | 0, e, hash[5], hash[6]];
     }
-    for (let i = 0; i < 8; i++) {
+    for (i = 0; i < 8; i++) {
       hash[i] = (hash[i] + oldHash[i]) | 0;
     }
   }
-  for (let i = 0; i < 8; i++) {
+  for (i = 0; i < 8; i++) {
     for (let j = 3; j + 1; j--) {
       const b = (hash[i] >> (j * 8)) & 255;
       result += (b < 16 ? "0" : "") + b.toString(16);
@@ -160,28 +178,38 @@ export class AdminAuthService {
     return typeof window !== "undefined";
   }
 
-  // Get current Admin ID (e.g. email)
+  // Get Super Admin ID
+  static getSuperAdminId(): string {
+    if (!this.isBrowser()) return DEFAULT_SUPER_ADMIN_ID;
+    return localStorage.getItem(STORAGE_KEYS.SUPER_ADMIN_ID) || DEFAULT_SUPER_ADMIN_ID;
+  }
+
+  // Backward compatibility helper
   static getAdminId(): string {
-    if (!this.isBrowser()) return DEFAULT_ADMIN_ID;
-    return localStorage.getItem(STORAGE_KEYS.ADMIN_ID) || DEFAULT_ADMIN_ID;
+    return this.getSuperAdminId();
   }
 
-  // Get current Password Hash
-  private static getStoredPasswordHash(): string {
-    if (!this.isBrowser()) return DEFAULT_PASSWORD_HASH;
-    // Remove any legacy plaintext keys from previous versions
-    if (localStorage.getItem("toronto_cafe_admin_pass")) {
-      localStorage.removeItem("toronto_cafe_admin_pass");
-    }
-    return localStorage.getItem(STORAGE_KEYS.ADMIN_PASS_HASH) || DEFAULT_PASSWORD_HASH;
+  // Get Staff Admin ID
+  static getStaffAdminId(): string {
+    if (!this.isBrowser()) return DEFAULT_STAFF_ADMIN_ID;
+    return localStorage.getItem(STORAGE_KEYS.STAFF_ADMIN_ID) || DEFAULT_STAFF_ADMIN_ID;
   }
 
-  // Get current Security PIN Hash
+  // Get Super Admin Password Hash
+  private static getStoredSuperPasswordHash(): string {
+    if (!this.isBrowser()) return DEFAULT_SUPER_PASSWORD_HASH;
+    return localStorage.getItem(STORAGE_KEYS.SUPER_ADMIN_PASS_HASH) || DEFAULT_SUPER_PASSWORD_HASH;
+  }
+
+  // Get Staff Password Hash
+  private static getStoredStaffPasswordHash(): string {
+    if (!this.isBrowser()) return DEFAULT_STAFF_PASSWORD_HASH;
+    return localStorage.getItem(STORAGE_KEYS.STAFF_ADMIN_PASS_HASH) || DEFAULT_STAFF_PASSWORD_HASH;
+  }
+
+  // Get Security PIN Hash (Super Admin recovery)
   private static getStoredPinHash(): string {
     if (!this.isBrowser()) return DEFAULT_PIN_HASH;
-    if (localStorage.getItem("toronto_cafe_security_pin")) {
-      localStorage.removeItem("toronto_cafe_security_pin");
-    }
     return localStorage.getItem(STORAGE_KEYS.SECURITY_PIN_HASH) || DEFAULT_PIN_HASH;
   }
 
@@ -199,8 +227,46 @@ export class AdminAuthService {
     return { isLocked: false, remainingSeconds: 0 };
   }
 
-  // Attempt Login using SHA-256 hash comparison
-  static async login(id: string, pass: string, remember: boolean = false): Promise<{ success: boolean; error?: string }> {
+  // Current active session
+  static getCurrentSession(): AdminSession | null {
+    if (!this.isBrowser()) return null;
+    const sessionStr = localStorage.getItem(STORAGE_KEYS.SESSION);
+    if (!sessionStr) return null;
+    try {
+      const session = JSON.parse(sessionStr) as AdminSession;
+      if (session.expiresAt && session.expiresAt > Date.now()) {
+        return session;
+      }
+      this.logout();
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  // Verify Active Session and Role
+  static isAuthenticated(requiredRole?: UserRole): boolean {
+    const session = this.getCurrentSession();
+    if (!session) return false;
+    if (!requiredRole) return true;
+    if (requiredRole === "STAFF_ADMIN") {
+      // Both Super Admin and Staff Admin can access Staff portal
+      return true;
+    }
+    if (requiredRole === "SUPER_ADMIN") {
+      // ONLY Super Admin can access Super Admin vault
+      return session.role === "SUPER_ADMIN";
+    }
+    return false;
+  }
+
+  // Attempt Login for a specific portal role
+  static async login(
+    id: string,
+    pass: string,
+    portalRole: UserRole,
+    remember: boolean = false
+  ): Promise<{ success: boolean; role?: UserRole; error?: string }> {
     if (!this.isBrowser()) return { success: false, error: "Browser environment required" };
 
     const lockout = this.checkLockout();
@@ -211,81 +277,87 @@ export class AdminAuthService {
       };
     }
 
-    const currentId = this.getAdminId();
-    const storedHash = this.getStoredPasswordHash();
+    const inputId = id.trim().toLowerCase();
     const inputHash = await sha256(pass);
 
-    if (id.trim().toLowerCase() === currentId.trim().toLowerCase() && inputHash === storedHash) {
+    const superId = this.getSuperAdminId().trim().toLowerCase();
+    const superHash = this.getStoredSuperPasswordHash();
+
+    const staffId = this.getStaffAdminId().trim().toLowerCase();
+    const staffHash = this.getStoredStaffPasswordHash();
+
+    let authenticatedRole: UserRole | null = null;
+    let authenticatedId = "";
+
+    // 1. Check Super Admin credentials
+    if (inputId === superId && inputHash === superHash) {
+      authenticatedRole = "SUPER_ADMIN";
+      authenticatedId = this.getSuperAdminId();
+    }
+    // 2. Check Staff Admin credentials
+    else if (inputId === staffId && inputHash === staffHash) {
+      if (portalRole === "SUPER_ADMIN") {
+        return {
+          success: false,
+          error: "Staff credentials cannot access the Super Admin Master Vault.",
+        };
+      }
+      authenticatedRole = "STAFF_ADMIN";
+      authenticatedId = this.getStaffAdminId();
+    }
+
+    if (authenticatedRole) {
       // Reset failed attempts
       localStorage.removeItem(STORAGE_KEYS.FAILED_ATTEMPTS);
       localStorage.removeItem(STORAGE_KEYS.LOCKOUT_UNTIL);
 
-      // Create session with cryptographically random token
-      const sessionData = {
-        adminId: currentId,
+      const sessionData: AdminSession = {
+        adminId: authenticatedId,
+        role: authenticatedRole,
         token: "tok_" + Math.random().toString(36).substring(2) + Date.now().toString(36),
         loginAt: Date.now(),
         expiresAt: remember ? Date.now() + 7 * 24 * 60 * 60 * 1000 : Date.now() + 12 * 60 * 60 * 1000,
       };
 
       localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(sessionData));
-      this.addAuditLog("LOGIN_SUCCESS", `Authorized session created for ${currentId}`);
+      this.addAuditLog("LOGIN_SUCCESS", `Signed into ${portalRole} as ${authenticatedId}`, authenticatedRole);
 
-      return { success: true };
+      return { success: true, role: authenticatedRole };
     } else {
-      // Increment failed attempts
       const failed = parseInt(localStorage.getItem(STORAGE_KEYS.FAILED_ATTEMPTS) || "0", 10) + 1;
       localStorage.setItem(STORAGE_KEYS.FAILED_ATTEMPTS, failed.toString());
 
-      this.addAuditLog("LOGIN_FAILED", `Failed login attempt for ID: ${id}`);
+      this.addAuditLog("LOGIN_FAILED", `Failed login attempt for ID: ${id} on ${portalRole}`);
 
       if (failed >= 5) {
-        const lockoutUntil = Date.now() + 60 * 1000; // 60s lockout
+        const lockoutUntil = Date.now() + 60 * 1000;
         localStorage.setItem(STORAGE_KEYS.LOCKOUT_UNTIL, lockoutUntil.toString());
         return {
           success: false,
-          error: "Too many failed attempts! Account locked for 60 seconds.",
+          error: "Too many failed attempts! Portal locked for 60 seconds.",
         };
       }
 
       return {
         success: false,
-        error: `Invalid Admin ID or Password. (${5 - failed} attempts remaining before lockout)`,
+        error: `Invalid Credentials. (${5 - failed} attempts remaining before lockout)`,
       };
-    }
-  }
-
-  // Verify Active Session
-  static isAuthenticated(): boolean {
-    if (!this.isBrowser()) return false;
-    const sessionStr = localStorage.getItem(STORAGE_KEYS.SESSION);
-    if (!sessionStr) return false;
-
-    try {
-      const session = JSON.parse(sessionStr);
-      if (session.expiresAt && session.expiresAt > Date.now()) {
-        return true;
-      }
-      this.logout();
-      return false;
-    } catch {
-      return false;
     }
   }
 
   // Logout
   static logout(): void {
     if (!this.isBrowser()) return;
-    this.addAuditLog("LOGOUT", "Admin session ended");
+    this.addAuditLog("LOGOUT", "Session ended");
     localStorage.removeItem(STORAGE_KEYS.SESSION);
   }
 
-  // Update Credentials (never stores plaintext password)
+  // Update Super Admin Credentials
   static async updateCredentials(newId: string, newPass: string): Promise<{ success: boolean; error?: string }> {
     if (!this.isBrowser()) return { success: false, error: "Browser environment required" };
 
     if (!newId || newId.length < 3) {
-      return { success: false, error: "Admin ID must be at least 3 characters long." };
+      return { success: false, error: "Super Admin ID must be at least 3 characters long." };
     }
 
     const strength = evaluatePasswordStrength(newPass);
@@ -297,14 +369,34 @@ export class AdminAuthService {
     }
 
     const newPassHash = await sha256(newPass);
-    localStorage.setItem(STORAGE_KEYS.ADMIN_ID, newId.trim());
-    localStorage.setItem(STORAGE_KEYS.ADMIN_PASS_HASH, newPassHash);
+    localStorage.setItem(STORAGE_KEYS.SUPER_ADMIN_ID, newId.trim());
+    localStorage.setItem(STORAGE_KEYS.SUPER_ADMIN_PASS_HASH, newPassHash);
 
-    this.addAuditLog("PASSWORD_CHANGED", `Credentials updated for ${newId}`);
+    this.addAuditLog("PASSWORD_CHANGED", `Super Admin ID/Password updated for ${newId}`, "SUPER_ADMIN");
     return { success: true };
   }
 
-  // Reset Password via Security PIN
+  // Update Staff Admin Credentials (managed by Super Admin)
+  static async updateStaffCredentials(newId: string, newPass: string): Promise<{ success: boolean; error?: string }> {
+    if (!this.isBrowser()) return { success: false, error: "Browser environment required" };
+
+    if (!newId || newId.length < 3) {
+      return { success: false, error: "Staff ID must be at least 3 characters long." };
+    }
+
+    if (newPass.length < 8) {
+      return { success: false, error: "Staff Password must be at least 8 characters long." };
+    }
+
+    const newPassHash = await sha256(newPass);
+    localStorage.setItem(STORAGE_KEYS.STAFF_ADMIN_ID, newId.trim());
+    localStorage.setItem(STORAGE_KEYS.STAFF_ADMIN_PASS_HASH, newPassHash);
+
+    this.addAuditLog("STAFF_PASSWORD_CHANGED", `Staff credentials updated for ${newId}`, "SUPER_ADMIN");
+    return { success: true };
+  }
+
+  // Reset Super Admin via Security PIN
   static async resetViaPin(pin: string, newPass: string): Promise<{ success: boolean; error?: string }> {
     if (!this.isBrowser()) return { success: false, error: "Browser environment required" };
 
@@ -323,11 +415,11 @@ export class AdminAuthService {
     }
 
     const newPassHash = await sha256(newPass);
-    localStorage.setItem(STORAGE_KEYS.ADMIN_PASS_HASH, newPassHash);
+    localStorage.setItem(STORAGE_KEYS.SUPER_ADMIN_PASS_HASH, newPassHash);
     localStorage.removeItem(STORAGE_KEYS.FAILED_ATTEMPTS);
     localStorage.removeItem(STORAGE_KEYS.LOCKOUT_UNTIL);
 
-    this.addAuditLog("PIN_RESET", "Password successfully reset via Security PIN");
+    this.addAuditLog("PIN_RESET", "Super Admin password reset via Security PIN", "SUPER_ADMIN");
     return { success: true };
   }
 
@@ -343,7 +435,7 @@ export class AdminAuthService {
     }
   }
 
-  static addAuditLog(action: SecurityAuditLog["action"], details: string): void {
+  static addAuditLog(action: SecurityAuditLog["action"], details: string, role?: UserRole): void {
     if (!this.isBrowser()) return;
     try {
       const logs = this.getAuditLogs();
@@ -354,6 +446,7 @@ export class AdminAuthService {
         ipAddress: "127.0.0.1 (Localhost)",
         userAgent: (typeof navigator !== "undefined" ? navigator.userAgent.substring(0, 45) : "Server") + "...",
         details,
+        role,
       };
       const updated = [newLog, ...logs.slice(0, 49)];
       localStorage.setItem(STORAGE_KEYS.AUDIT_LOGS, JSON.stringify(updated));

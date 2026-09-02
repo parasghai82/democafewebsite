@@ -10,43 +10,53 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AdminRouteImport } from './routes/admin'
+import { Route as PortalAdmin8f2c7eRouteImport } from './routes/portal-admin-8f2c7e'
+import { Route as VaultSuper9a3b4dRouteImport } from './routes/vault-super-9a3b4d'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AdminRoute = AdminRouteImport.update({
-  id: '/admin',
-  path: '/admin',
+const PortalAdmin8f2c7eRoute = PortalAdmin8f2c7eRouteImport.update({
+  id: '/portal-admin-8f2c7e',
+  path: '/portal-admin-8f2c7e',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VaultSuper9a3b4dRoute = VaultSuper9a3b4dRouteImport.update({
+  id: '/vault-super-9a3b4d',
+  path: '/vault-super-9a3b4d',
   getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/portal-admin-8f2c7e': typeof PortalAdmin8f2c7eRoute
+  '/vault-super-9a3b4d': typeof VaultSuper9a3b4dRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/portal-admin-8f2c7e': typeof PortalAdmin8f2c7eRoute
+  '/vault-super-9a3b4d': typeof VaultSuper9a3b4dRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/admin': typeof AdminRoute
+  '/portal-admin-8f2c7e': typeof PortalAdmin8f2c7eRoute
+  '/vault-super-9a3b4d': typeof VaultSuper9a3b4dRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin'
+  fullPaths: '/' | '/portal-admin-8f2c7e' | '/vault-super-9a3b4d'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin'
-  id: '__root__' | '/' | '/admin'
+  to: '/' | '/portal-admin-8f2c7e' | '/vault-super-9a3b4d'
+  id: '__root__' | '/' | '/portal-admin-8f2c7e' | '/vault-super-9a3b4d'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AdminRoute: typeof AdminRoute
+  PortalAdmin8f2c7eRoute: typeof PortalAdmin8f2c7eRoute
+  VaultSuper9a3b4dRoute: typeof VaultSuper9a3b4dRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -58,11 +68,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin': {
-      id: '/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AdminRouteImport
+    '/portal-admin-8f2c7e': {
+      id: '/portal-admin-8f2c7e'
+      path: '/portal-admin-8f2c7e'
+      fullPath: '/portal-admin-8f2c7e'
+      preLoaderRoute: typeof PortalAdmin8f2c7eRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/vault-super-9a3b4d': {
+      id: '/vault-super-9a3b4d'
+      path: '/vault-super-9a3b4d'
+      fullPath: '/vault-super-9a3b4d'
+      preLoaderRoute: typeof VaultSuper9a3b4dRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -70,7 +87,8 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AdminRoute: AdminRoute,
+  PortalAdmin8f2c7eRoute: PortalAdmin8f2c7eRoute,
+  VaultSuper9a3b4dRoute: VaultSuper9a3b4dRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

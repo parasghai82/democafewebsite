@@ -88,17 +88,15 @@ import {
   type CafeSettings,
 } from "@/lib/cafeAdminStore";
 
-export const Route = createFileRoute("/admin")({
-  component: AdminPage,
-  head: () => ({
-    meta: [
-      { title: "Staff Admin Portal — Toronto Cafe" },
-      { name: "robots", content: "noindex, nofollow" },
-    ],
-  }),
-});
+import type { UserRole } from "@/lib/adminAuth";
 
-type AdminTab = "overview" | "orders" | "bookings" | "messages" | "menu" | "security";
+export interface AdminPortalCoreProps {
+  portalRole: UserRole;
+  portalTitle?: string;
+  portalDescription?: string;
+}
+
+type AdminTab = "overview" | "orders" | "bookings" | "messages" | "menu" | "security" | "qrcodes";
 
 function playChime() {
   try {
@@ -119,7 +117,11 @@ function playChime() {
   }
 }
 
-function AdminPage() {
+export function AdminPortalCore({
+  portalRole = "SUPER_ADMIN",
+  portalTitle,
+  portalDescription,
+}: AdminPortalCoreProps) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [activeTab, setActiveTab] = useState<AdminTab>("overview");
   const [tick, setTick] = useState(0);
@@ -140,7 +142,7 @@ function AdminPage() {
   const prevFormsRef = useRef<number>(CafeAdminStore.getFormSubmissions().length);
 
   useEffect(() => {
-    setIsAuthenticated(AdminAuthService.isAuthenticated());
+    setIsAuthenticated(AdminAuthService.isAuthenticated(portalRole));
 
     const handleUpdate = () => triggerRefresh(false);
     window.addEventListener("cafe_store_updated", handleUpdate);
@@ -225,7 +227,14 @@ function AdminPage() {
   };
 
   if (!isAuthenticated) {
-    return <AdminLogin onLoginSuccess={handleLoginSuccess} />;
+    return (
+      <AdminLogin
+        portalRole={portalRole}
+        portalTitle={portalTitle}
+        portalDescription={portalDescription}
+        onLoginSuccess={handleLoginSuccess}
+      />
+    );
   }
 
   const ordersCount = CafeAdminStore.getOrders().length;
@@ -262,31 +271,53 @@ function AdminPage() {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="font-heading text-lg font-black text-white tracking-tight">Toronto Cafe</h1>
-              <span className="rounded-full bg-butter/20 border border-butter/40 text-butter px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider">
-                POS Enterprise
+              <h1 className="font-heading text-lg font-black text-white tracking-tight">
+                {portalTitle || (portalRole === "SUPER_ADMIN" ? "Toronto Cafe Super Admin" : "Toronto Cafe POS")}
+              </h1>
+              <span className={`rounded-full border px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider ${
+                portalRole === "SUPER_ADMIN"
+                  ? "bg-butter/20 border-butter/40 text-butter"
+                  : "bg-emerald-500/20 border-emerald-500/40 text-emerald-300"
+              }`}>
+                {portalRole === "SUPER_ADMIN" ? "SUPER ADMIN VAULT" : "STAFF OPERATIONS"}
               </span>
             </div>
-            <p className="text-[11px] text-white/50">Baldwin Village · 7 Baldwin St, Toronto, ON</p>
+            <p className="text-[11px] text-white/50">
+              {portalDescription || "Baldwin Village · 7 Baldwin St, Toronto, ON"}
+            </p>
           </div>
         </div>
 
         {/* Live Controls & Telemetry */}
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           
-          {/* STORE STATUS TOGGLE SWITCH */}
-          <button
-            onClick={handleToggleWebsitePower}
-            className={`h-10 px-4 rounded-xl text-xs font-black flex items-center gap-2 transition-all cursor-pointer shadow-sm ${
-              isOnline
-                ? "bg-emerald-500 hover:bg-emerald-600 text-black ring-1 ring-emerald-400/50 shadow-emerald-500/20"
-                : "bg-red-500 hover:bg-red-600 text-white ring-1 ring-red-400/50 shadow-red-500/20 animate-pulse"
-            }`}
-            title="Toggle storefront availability for customers"
-          >
-            <Power className="h-3.5 w-3.5" />
-            <span>{isOnline ? "STORE ONLINE" : "STORE OFFLINE"}</span>
-          </button>
+          {/* STORE STATUS TOGGLE SWITCH (Super Admin only, read-only indicator for Staff) */}
+          {portalRole === "SUPER_ADMIN" ? (
+            <button
+              onClick={handleToggleWebsitePower}
+              className={`h-10 px-4 rounded-xl text-xs font-black flex items-center gap-2 transition-all cursor-pointer shadow-sm ${
+                isOnline
+                  ? "bg-emerald-500 hover:bg-emerald-600 text-black ring-1 ring-emerald-400/50 shadow-emerald-500/20"
+                  : "bg-red-500 hover:bg-red-600 text-white ring-1 ring-red-400/50 shadow-red-500/20 animate-pulse"
+              }`}
+              title="Toggle storefront availability for customers"
+            >
+              <Power className="h-3.5 w-3.5" />
+              <span>{isOnline ? "STORE ONLINE" : "STORE OFFLINE"}</span>
+            </button>
+          ) : (
+            <div
+              className={`h-10 px-3.5 rounded-xl text-xs font-black flex items-center gap-2 select-none border ${
+                isOnline
+                  ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+                  : "bg-red-500/20 text-red-300 border-red-500/30"
+              }`}
+              title="Storefront status (Super Admin can toggle)"
+            >
+              <Power className="h-3.5 w-3.5" />
+              <span>{isOnline ? "STORE ONLINE" : "STORE OFFLINE"}</span>
+            </div>
+          )}
 
           {/* RADAR SYNC CHIP */}
           <div className="flex items-center gap-2 bg-white/[0.04] border border-white/10 px-3 py-1.5 rounded-xl text-xs">
@@ -319,7 +350,9 @@ function AdminPage() {
           {/* User Profile Chip */}
           <div className="hidden xl:flex items-center gap-2 bg-white/[0.04] border border-white/10 px-3 py-1.5 rounded-xl text-xs">
             <User className="h-3.5 w-3.5 text-butter" />
-            <span className="font-semibold text-white/80">{AdminAuthService.getAdminId()}</span>
+            <span className="font-semibold text-white/80">
+              {AdminAuthService.getCurrentSession()?.adminId || (portalRole === "SUPER_ADMIN" ? AdminAuthService.getSuperAdminId() : AdminAuthService.getStaffAdminId())}
+            </span>
           </div>
 
           <Link
@@ -457,32 +490,34 @@ function AdminPage() {
             </button>
           </div>
 
-          {/* SECTION 3: SYSTEM & DATA */}
-          <div className="space-y-1 pt-2 border-t border-white/[0.08]">
-            <p className="px-3 text-[10px] font-black tracking-widest uppercase text-white/40 mb-1">
-              System Settings
-            </p>
+          {/* SECTION 3: SYSTEM & DATA (Super Admin Only) */}
+          {portalRole === "SUPER_ADMIN" && (
+            <div className="space-y-1 pt-2 border-t border-white/[0.08]">
+              <p className="px-3 text-[10px] font-black tracking-widest uppercase text-white/40 mb-1">
+                Super Admin Master Controls
+              </p>
 
-            <button
-              onClick={() => setActiveTab("security")}
-              className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
-                activeTab === "security"
-                  ? "bg-butter text-warm-brown shadow-md ring-1 ring-butter/80"
-                  : "text-white/70 hover:bg-white/[0.05] hover:text-white"
-              }`}
-            >
-              <ShieldCheck className="h-4 w-4 shrink-0" />
-              <span>7. Master Security</span>
-            </button>
+              <button
+                onClick={() => setActiveTab("security")}
+                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer ${
+                  activeTab === "security"
+                    ? "bg-butter text-warm-brown shadow-md ring-1 ring-butter/80"
+                    : "text-white/70 hover:bg-white/[0.05] hover:text-white"
+                }`}
+              >
+                <ShieldCheck className="h-4 w-4 shrink-0" />
+                <span>7. Master Security & Roles</span>
+              </button>
 
-            <button
-              onClick={handleWipeAllData}
-              className="w-full mt-2 py-2 px-3 rounded-xl border border-red-500/20 bg-red-500/[0.04] hover:bg-red-500/15 text-red-300 text-[11px] font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-all"
-            >
-              <Trash2 className="h-3 w-3" />
-              <span>Reset Daily Test Data</span>
-            </button>
-          </div>
+              <button
+                onClick={handleWipeAllData}
+                className="w-full mt-2 py-2 px-3 rounded-xl border border-red-500/20 bg-red-500/[0.04] hover:bg-red-500/15 text-red-300 text-[11px] font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-all"
+              >
+                <Trash2 className="h-3 w-3" />
+                <span>Reset Daily Test Data</span>
+              </button>
+            </div>
+          )}
 
         </aside>
 
@@ -505,7 +540,17 @@ function AdminPage() {
 // -------------------------------------------------------------
 // 1. SIMPLE & BEAUTIFUL LOGIN VIEW
 // -------------------------------------------------------------
-function AdminLogin({ onLoginSuccess }: { onLoginSuccess: () => void }) {
+function AdminLogin({
+  portalRole,
+  portalTitle,
+  portalDescription,
+  onLoginSuccess,
+}: {
+  portalRole: UserRole;
+  portalTitle?: string;
+  portalDescription?: string;
+  onLoginSuccess: () => void;
+}) {
   const [adminId, setAdminId] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -517,7 +562,7 @@ function AdminLogin({ onLoginSuccess }: { onLoginSuccess: () => void }) {
     setIsLoading(true);
     setErrorMessage("");
     try {
-      const res = await AdminAuthService.login(adminId, password, true);
+      const res = await AdminAuthService.login(adminId, password, portalRole, true);
       if (res.success) {
         onLoginSuccess();
       } else {
@@ -529,6 +574,8 @@ function AdminLogin({ onLoginSuccess }: { onLoginSuccess: () => void }) {
       setIsLoading(false);
     }
   };
+
+  const isSuper = portalRole === "SUPER_ADMIN";
 
   return (
     <div className="min-h-screen bg-[#0F0A07] flex items-center justify-center p-4 relative overflow-hidden font-body selection:bg-butter selection:text-warm-brown">
@@ -549,8 +596,21 @@ function AdminLogin({ onLoginSuccess }: { onLoginSuccess: () => void }) {
           </div>
 
           <div className="space-y-1">
-            <h2 className="font-heading text-3xl font-black text-white tracking-tight">Toronto Cafe POS</h2>
-            <p className="text-xs text-white/60">Baldwin Village · Staff & Management Portal</p>
+            <div className="flex items-center justify-center gap-2">
+              <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider border ${
+                isSuper
+                  ? "bg-butter/20 border-butter/40 text-butter"
+                  : "bg-emerald-500/20 border-emerald-500/40 text-emerald-300"
+              }`}>
+                {isSuper ? "SUPER ADMIN VAULT" : "STAFF PORTAL"}
+              </span>
+            </div>
+            <h2 className="font-heading text-3xl font-black text-white tracking-tight">
+              {portalTitle || (isSuper ? "Super Admin Vault" : "Toronto Cafe POS")}
+            </h2>
+            <p className="text-xs text-white/60">
+              {portalDescription || (isSuper ? "Master Owner & System Terminal" : "Staff & Barista Operations Portal")}
+            </p>
           </div>
 
           {errorMessage && (
@@ -1972,79 +2032,184 @@ function SimpleMenuTab() {
 // 7. SIMPLE SECURITY & PASSWORD TAB
 // -------------------------------------------------------------
 function SimpleSecurityTab({ onLogout }: { onLogout: () => void }) {
-  const [newPass, setNewPass] = useState("");
-  const [confirmPass, setConfirmPass] = useState("");
-  const [msg, setMsg] = useState("");
+  const [newSuperPass, setNewSuperPass] = useState("");
+  const [confirmSuperPass, setConfirmSuperPass] = useState("");
+  const [superMsg, setSuperMsg] = useState("");
 
-  const handleSave = async (e: React.FormEvent) => {
+  const [staffEmail, setStaffEmail] = useState(AdminAuthService.getStaffAdminId());
+  const [newStaffPass, setNewStaffPass] = useState("");
+  const [staffMsg, setStaffMsg] = useState("");
+
+  const handleSaveSuper = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (newPass.length < 12) {
-      setMsg("⚠️ Password must be at least 12 characters");
+    if (newSuperPass.length < 12) {
+      setSuperMsg("⚠️ Super Admin Password must be at least 12 characters");
       return;
     }
-    if (newPass !== confirmPass) {
-      setMsg("⚠️ Passwords do not match");
+    if (newSuperPass !== confirmSuperPass) {
+      setSuperMsg("⚠️ Passwords do not match");
       return;
     }
 
-    const res = await AdminAuthService.updateCredentials(AdminAuthService.getAdminId(), newPass);
+    const res = await AdminAuthService.updateCredentials(AdminAuthService.getSuperAdminId(), newSuperPass);
     if (res.success) {
-      setMsg("✅ Master Password updated and securely encrypted!");
-      setNewPass("");
-      setConfirmPass("");
+      setSuperMsg("✅ Super Admin Master Password updated & encrypted!");
+      setNewSuperPass("");
+      setConfirmSuperPass("");
     } else {
-      setMsg(res.error || "⚠️ Failed to update password");
+      setSuperMsg(res.error || "⚠️ Failed to update password");
     }
   };
 
+  const handleSaveStaff = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newStaffPass.length < 8) {
+      setStaffMsg("⚠️ Staff Password must be at least 8 characters");
+      return;
+    }
+
+    const res = await AdminAuthService.updateStaffCredentials(staffEmail, newStaffPass);
+    if (res.success) {
+      setStaffMsg("✅ Staff Admin login updated successfully!");
+      setNewStaffPass("");
+    } else {
+      setStaffMsg(res.error || "⚠️ Failed to update staff credentials");
+    }
+  };
+
+  const auditLogs = AdminAuthService.getAuditLogs();
+
   return (
-    <div className="space-y-6 max-w-md text-left animate-admin-enter">
+    <div className="space-y-8 max-w-2xl text-left animate-admin-enter">
       <div>
         <h2 className="font-heading text-2xl font-extrabold text-white flex items-center gap-2">
           <ShieldCheck className="h-6 w-6 text-butter" />
-          Master Password Settings
+          Master Security & Access Control
         </h2>
-        <p className="text-xs text-white/60">Update your login password anytime.</p>
+        <p className="text-xs text-white/60">Configure Owner Super Admin and Staff Portal credentials.</p>
       </div>
 
-      {msg && (
-        <div className="p-3.5 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-bold animate-bounce">
-          {msg}
-        </div>
-      )}
-
-      <form onSubmit={handleSave} className="p-6 rounded-3xl border border-white/10 bg-[#1B140F] space-y-4 shadow-xl">
-        <div className="space-y-1">
-          <label className="text-xs font-bold text-white/70">New Password</label>
-          <Input
-            type="password"
-            required
-            placeholder="Min 12 characters"
-            value={newPass}
-            onChange={(e) => setNewPass(e.target.value)}
-            className="bg-white/5 border-white/15 rounded-xl text-white text-xs h-11 focus:border-butter/60"
-          />
+      {/* 1. Super Admin Password */}
+      <div className="p-6 rounded-3xl border border-white/10 bg-[#1B140F] space-y-4 shadow-xl">
+        <div>
+          <h3 className="font-heading font-black text-sm text-butter uppercase tracking-wider flex items-center gap-2">
+            <Lock className="h-4 w-4 text-butter" />
+            1. Super Admin Master Password
+          </h3>
+          <p className="text-[11px] text-white/50">Full access to site killswitch, passwords, and database.</p>
         </div>
 
-        <div className="space-y-1">
-          <label className="text-xs font-bold text-white/70">Confirm Password</label>
-          <Input
-            type="password"
-            required
-            placeholder="Re-enter password"
-            value={confirmPass}
-            onChange={(e) => setConfirmPass(e.target.value)}
-            className="bg-white/5 border-white/15 rounded-xl text-white text-xs h-11 focus:border-butter/60"
-          />
+        {superMsg && (
+          <div className="p-3 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-bold">
+            {superMsg}
+          </div>
+        )}
+
+        <form onSubmit={handleSaveSuper} className="space-y-3">
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-white/70">New Master Password</label>
+            <Input
+              type="password"
+              required
+              placeholder="Min 12 characters (upper, lower, number, symbol)"
+              value={newSuperPass}
+              onChange={(e) => setNewSuperPass(e.target.value)}
+              className="bg-white/5 border-white/15 rounded-xl text-white text-xs h-11 focus:border-butter/60"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-white/70">Confirm Master Password</label>
+            <Input
+              type="password"
+              required
+              placeholder="Re-enter master password"
+              value={confirmSuperPass}
+              onChange={(e) => setConfirmSuperPass(e.target.value)}
+              className="bg-white/5 border-white/15 rounded-xl text-white text-xs h-11 focus:border-butter/60"
+            />
+          </div>
+
+          <button
+            type="submit"
+            className="btn-3d-gold w-full h-11 rounded-xl font-bold text-xs text-warm-brown cursor-pointer shadow-md hover:scale-101 transition-transform"
+          >
+            Update Super Admin Password
+          </button>
+        </form>
+      </div>
+
+      {/* 2. Staff Admin Credentials */}
+      <div className="p-6 rounded-3xl border border-white/10 bg-[#1B140F] space-y-4 shadow-xl">
+        <div>
+          <h3 className="font-heading font-black text-sm text-emerald-400 uppercase tracking-wider flex items-center gap-2">
+            <Users className="h-4 w-4 text-emerald-400" />
+            2. Staff / Barista Portal Credentials
+          </h3>
+          <p className="text-[11px] text-white/50">Used by floor staff for orders, bookings, and stock.</p>
         </div>
 
-        <button
-          type="submit"
-          className="btn-3d-gold w-full h-12 rounded-xl font-bold text-xs text-warm-brown cursor-pointer shadow-md hover:scale-102 transition-transform"
-        >
-          Save New Password
-        </button>
-      </form>
+        {staffMsg && (
+          <div className="p-3 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-bold">
+            {staffMsg}
+          </div>
+        )}
+
+        <form onSubmit={handleSaveStaff} className="space-y-3">
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-white/70">Staff Login ID</label>
+            <Input
+              type="text"
+              required
+              placeholder="staff@torontocafe.ca"
+              value={staffEmail}
+              onChange={(e) => setStaffEmail(e.target.value)}
+              className="bg-white/5 border-white/15 rounded-xl text-white text-xs h-11 focus:border-butter/60"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-white/70">New Staff Password</label>
+            <Input
+              type="password"
+              required
+              placeholder="Min 8 characters"
+              value={newStaffPass}
+              onChange={(e) => setNewStaffPass(e.target.value)}
+              className="bg-white/5 border-white/15 rounded-xl text-white text-xs h-11 focus:border-butter/60"
+            />
+          </div>
+
+          <button
+            type="submit"
+            className="w-full h-11 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-black font-extrabold text-xs cursor-pointer shadow-md transition-all"
+          >
+            Update Staff Credentials
+          </button>
+        </form>
+      </div>
+
+      {/* 3. Security Audit Logs */}
+      <div className="p-6 rounded-3xl border border-white/10 bg-[#1B140F] space-y-3 shadow-xl">
+        <h3 className="font-heading font-black text-sm text-white uppercase tracking-wider flex items-center gap-2">
+          <Clock className="h-4 w-4 text-butter" />
+          Recent Security Activity Logs
+        </h3>
+        <div className="max-h-48 overflow-y-auto space-y-2 pr-1">
+          {auditLogs.length === 0 ? (
+            <p className="text-xs text-white/40">No audit logs recorded yet.</p>
+          ) : (
+            auditLogs.slice(0, 10).map((log) => (
+              <div key={log.id} className="p-2.5 rounded-xl bg-white/[0.03] border border-white/5 text-[11px] flex items-center justify-between gap-2">
+                <span className="font-bold text-butter">{log.action}</span>
+                <span className="text-white/60 truncate max-w-xs">{log.details}</span>
+                <span className="text-white/40 text-[10px] shrink-0">{log.timestamp}</span>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
     </div>
   );
 }
