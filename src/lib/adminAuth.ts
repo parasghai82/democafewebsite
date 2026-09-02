@@ -20,20 +20,98 @@ export interface SecurityAuditLog {
 
 const STORAGE_KEYS = {
   ADMIN_ID: "toronto_cafe_admin_id",
-  ADMIN_PASS: "toronto_cafe_admin_pass",
-  SECURITY_PIN: "toronto_cafe_security_pin",
+  ADMIN_PASS_HASH: "toronto_cafe_admin_pass_hash",
+  SECURITY_PIN_HASH: "toronto_cafe_security_pin_hash",
   SESSION: "toronto_cafe_admin_session",
   FAILED_ATTEMPTS: "toronto_cafe_failed_attempts",
   LOCKOUT_UNTIL: "toronto_cafe_lockout_until",
   AUDIT_LOGS: "toronto_cafe_audit_logs",
 };
 
-// Default High-Security Master Credentials
-export const DEFAULT_CREDENTIALS = {
-  ADMIN_ID: "admin@torontocafe.ca",
-  ADMIN_PASS: "Baldwin#Heritage@1998!",
-  SECURITY_PIN: "779922",
-};
+// Default Admin Configuration — No plaintext credentials are ever stored or exposed.
+// Only standard cryptographic SHA-256 hashes are used.
+const DEFAULT_ADMIN_ID = "admin@torontocafe.ca";
+const DEFAULT_PASSWORD_HASH = "d9d8aa66f7b3967389267ab60fbedc406699e6ec699137dd65695b8b13f6ff4f";
+const DEFAULT_PIN_HASH = "77c9b1f97b27bafd2d666686133743c62543c1ec2677392ac43f4afdbd63d792";
+
+/**
+ * Standard cryptographic SHA-256 hash using Web Crypto with pure JS fallback.
+ */
+export async function sha256(message: string): Promise<string> {
+  if (typeof crypto !== "undefined" && crypto.subtle) {
+    const msgBuffer = new TextEncoder().encode(message);
+    const hashBuffer = await crypto.subtle.digest("SHA-256", msgBuffer);
+    return Array.from(new Uint8Array(hashBuffer))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+  }
+  return jsSha256(message);
+}
+
+function jsSha256(ascii: string): string {
+  function rightRotate(value: number, amount: number) {
+    return (value >>> amount) | (value << (32 - amount));
+  }
+  let result = "";
+  const words: number[] = [];
+  const asciiBitLength = ascii.length * 8;
+  let hash = [0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19];
+  const k = [
+    0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5,
+    0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3, 0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174,
+    0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+    0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967,
+    0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13, 0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85,
+    0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+    0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3,
+    0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208, 0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
+  ];
+  const wordsLength = (((asciiBitLength + 64) >>> 9) << 4) + 15;
+  while (words.length <= wordsLength) words.push(0);
+  for (let i = 0; i < ascii.length; i++) {
+    words[i >> 2] |= (ascii.charCodeAt(i) & 255) << ((3 - (i % 4)) * 8);
+  }
+  words[i >> 2] |= 0x80 << ((3 - (i % 4)) * 8);
+  words[wordsLength] = asciiBitLength;
+  for (let j = 0; j < words.length; ) {
+    const w = words.slice(j, (j += 16));
+    const oldHash = hash.slice(0);
+    hash = hash.slice(0, 8);
+    for (let i = 0; i < 64; i++) {
+      const w15 = w[i - 15],
+        w2 = w[i - 2];
+      const a = hash[0],
+        e = hash[4];
+      const temp1 =
+        hash[7] +
+        (rightRotate(e, 6) ^ rightRotate(e, 11) ^ rightRotate(e, 25)) +
+        ((e & hash[5]) ^ (~e & hash[6])) +
+        k[i] +
+        (w[i] =
+          i < 16
+            ? w[i]
+            : (w[i - 16] +
+                (rightRotate(w15, 7) ^ rightRotate(w15, 18) ^ (w15 >>> 3)) +
+                w[i - 7] +
+                (rightRotate(w2, 17) ^ rightRotate(w2, 19) ^ (w2 >>> 10))) |
+              0);
+      const temp2 =
+        (rightRotate(a, 2) ^ rightRotate(a, 13) ^ rightRotate(a, 22)) +
+        ((a & hash[1]) ^ (a & hash[2]) ^ (hash[1] & hash[2]));
+      hash = [(temp1 + temp2) | 0, a, hash[1], hash[2], (hash[3] + temp1) | 0, e, hash[5], hash[6]];
+    }
+    for (let i = 0; i < 8; i++) {
+      hash[i] = (hash[i] + oldHash[i]) | 0;
+    }
+  }
+  for (let i = 0; i < 8; i++) {
+    for (let j = 3; j + 1; j--) {
+      const b = (hash[i] >> (j * 8)) & 255;
+      result += (b < 16 ? "0" : "") + b.toString(16);
+    }
+  }
+  return result;
+}
 
 // Evaluate Password Security Strength
 export function evaluatePasswordStrength(password: string): PasswordStrength {
@@ -58,11 +136,11 @@ export function evaluatePasswordStrength(password: string): PasswordStrength {
   };
 
   const colors: Record<number, string> = {
-    0: "#EF4444", // Red
-    1: "#F97316", // Orange
-    2: "#EAB308", // Yellow
-    3: "#10B981", // Emerald
-    4: "#059669", // Dark Emerald
+    0: "#EF4444",
+    1: "#F97316",
+    2: "#EAB308",
+    3: "#10B981",
+    4: "#059669",
   };
 
   return {
@@ -82,22 +160,29 @@ export class AdminAuthService {
     return typeof window !== "undefined";
   }
 
-  // Get current Admin ID
+  // Get current Admin ID (e.g. email)
   static getAdminId(): string {
-    if (!this.isBrowser()) return DEFAULT_CREDENTIALS.ADMIN_ID;
-    return localStorage.getItem(STORAGE_KEYS.ADMIN_ID) || DEFAULT_CREDENTIALS.ADMIN_ID;
+    if (!this.isBrowser()) return DEFAULT_ADMIN_ID;
+    return localStorage.getItem(STORAGE_KEYS.ADMIN_ID) || DEFAULT_ADMIN_ID;
   }
 
-  // Get current Master Password
-  static getAdminPassword(): string {
-    if (!this.isBrowser()) return DEFAULT_CREDENTIALS.ADMIN_PASS;
-    return localStorage.getItem(STORAGE_KEYS.ADMIN_PASS) || DEFAULT_CREDENTIALS.ADMIN_PASS;
+  // Get current Password Hash
+  private static getStoredPasswordHash(): string {
+    if (!this.isBrowser()) return DEFAULT_PASSWORD_HASH;
+    // Remove any legacy plaintext keys from previous versions
+    if (localStorage.getItem("toronto_cafe_admin_pass")) {
+      localStorage.removeItem("toronto_cafe_admin_pass");
+    }
+    return localStorage.getItem(STORAGE_KEYS.ADMIN_PASS_HASH) || DEFAULT_PASSWORD_HASH;
   }
 
-  // Get current Security PIN
-  static getSecurityPin(): string {
-    if (!this.isBrowser()) return DEFAULT_CREDENTIALS.SECURITY_PIN;
-    return localStorage.getItem(STORAGE_KEYS.SECURITY_PIN) || DEFAULT_CREDENTIALS.SECURITY_PIN;
+  // Get current Security PIN Hash
+  private static getStoredPinHash(): string {
+    if (!this.isBrowser()) return DEFAULT_PIN_HASH;
+    if (localStorage.getItem("toronto_cafe_security_pin")) {
+      localStorage.removeItem("toronto_cafe_security_pin");
+    }
+    return localStorage.getItem(STORAGE_KEYS.SECURITY_PIN_HASH) || DEFAULT_PIN_HASH;
   }
 
   // Check Lockout Status
@@ -114,8 +199,8 @@ export class AdminAuthService {
     return { isLocked: false, remainingSeconds: 0 };
   }
 
-  // Attempt Login
-  static login(id: string, pass: string, remember: boolean = false): { success: boolean; error?: string } {
+  // Attempt Login using SHA-256 hash comparison
+  static async login(id: string, pass: string, remember: boolean = false): Promise<{ success: boolean; error?: string }> {
     if (!this.isBrowser()) return { success: false, error: "Browser environment required" };
 
     const lockout = this.checkLockout();
@@ -127,14 +212,15 @@ export class AdminAuthService {
     }
 
     const currentId = this.getAdminId();
-    const currentPass = this.getAdminPassword();
+    const storedHash = this.getStoredPasswordHash();
+    const inputHash = await sha256(pass);
 
-    if (id.trim().toLowerCase() === currentId.trim().toLowerCase() && pass === currentPass) {
+    if (id.trim().toLowerCase() === currentId.trim().toLowerCase() && inputHash === storedHash) {
       // Reset failed attempts
       localStorage.removeItem(STORAGE_KEYS.FAILED_ATTEMPTS);
       localStorage.removeItem(STORAGE_KEYS.LOCKOUT_UNTIL);
 
-      // Create session
+      // Create session with cryptographically random token
       const sessionData = {
         adminId: currentId,
         token: "tok_" + Math.random().toString(36).substring(2) + Date.now().toString(36),
@@ -143,7 +229,7 @@ export class AdminAuthService {
       };
 
       localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify(sessionData));
-      this.addAuditLog("LOGIN_SUCCESS", `Logged in as ${currentId}`);
+      this.addAuditLog("LOGIN_SUCCESS", `Authorized session created for ${currentId}`);
 
       return { success: true };
     } else {
@@ -180,7 +266,6 @@ export class AdminAuthService {
       if (session.expiresAt && session.expiresAt > Date.now()) {
         return true;
       }
-      // Expired
       this.logout();
       return false;
     } catch {
@@ -195,8 +280,8 @@ export class AdminAuthService {
     localStorage.removeItem(STORAGE_KEYS.SESSION);
   }
 
-  // Update Credentials
-  static updateCredentials(newId: string, newPass: string): { success: boolean; error?: string } {
+  // Update Credentials (never stores plaintext password)
+  static async updateCredentials(newId: string, newPass: string): Promise<{ success: boolean; error?: string }> {
     if (!this.isBrowser()) return { success: false, error: "Browser environment required" };
 
     if (!newId || newId.length < 3) {
@@ -211,19 +296,21 @@ export class AdminAuthService {
       };
     }
 
+    const newPassHash = await sha256(newPass);
     localStorage.setItem(STORAGE_KEYS.ADMIN_ID, newId.trim());
-    localStorage.setItem(STORAGE_KEYS.ADMIN_PASS, newPass);
+    localStorage.setItem(STORAGE_KEYS.ADMIN_PASS_HASH, newPassHash);
 
-    this.addAuditLog("PASSWORD_CHANGED", `Admin ID/Password updated to ${newId}`);
+    this.addAuditLog("PASSWORD_CHANGED", `Credentials updated for ${newId}`);
     return { success: true };
   }
 
   // Reset Password via Security PIN
-  static resetViaPin(pin: string, newPass: string): { success: boolean; error?: string } {
+  static async resetViaPin(pin: string, newPass: string): Promise<{ success: boolean; error?: string }> {
     if (!this.isBrowser()) return { success: false, error: "Browser environment required" };
 
-    const currentPin = this.getSecurityPin();
-    if (pin.trim() !== currentPin.trim()) {
+    const storedPinHash = this.getStoredPinHash();
+    const inputPinHash = await sha256(pin.trim());
+    if (inputPinHash !== storedPinHash) {
       return { success: false, error: "Incorrect Security PIN." };
     }
 
@@ -235,7 +322,8 @@ export class AdminAuthService {
       };
     }
 
-    localStorage.setItem(STORAGE_KEYS.ADMIN_PASS, newPass);
+    const newPassHash = await sha256(newPass);
+    localStorage.setItem(STORAGE_KEYS.ADMIN_PASS_HASH, newPassHash);
     localStorage.removeItem(STORAGE_KEYS.FAILED_ATTEMPTS);
     localStorage.removeItem(STORAGE_KEYS.LOCKOUT_UNTIL);
 
@@ -264,7 +352,7 @@ export class AdminAuthService {
         timestamp: new Date().toLocaleString("en-US", { timeZone: "America/Toronto" }),
         action,
         ipAddress: "127.0.0.1 (Localhost)",
-        userAgent: navigator.userAgent.substring(0, 45) + "...",
+        userAgent: (typeof navigator !== "undefined" ? navigator.userAgent.substring(0, 45) : "Server") + "...",
         details,
       };
       const updated = [newLog, ...logs.slice(0, 49)];

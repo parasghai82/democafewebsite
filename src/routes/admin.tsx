@@ -72,7 +72,6 @@ import {
 } from "@/components/ui/dialog";
 import {
   AdminAuthService,
-  DEFAULT_CREDENTIALS,
   evaluatePasswordStrength,
   type SecurityAuditLog,
 } from "@/lib/adminAuth";
@@ -320,7 +319,7 @@ function AdminPage() {
           {/* User Profile Chip */}
           <div className="hidden xl:flex items-center gap-2 bg-white/[0.04] border border-white/10 px-3 py-1.5 rounded-xl text-xs">
             <User className="h-3.5 w-3.5 text-butter" />
-            <span className="font-semibold text-white/80">admin@torontocafe.ca</span>
+            <span className="font-semibold text-white/80">{AdminAuthService.getAdminId()}</span>
           </div>
 
           <Link
@@ -511,24 +510,24 @@ function AdminLogin({ onLoginSuccess }: { onLoginSuccess: () => void }) {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const res = AdminAuthService.login(adminId, password, true);
-    if (res.success) {
-      onLoginSuccess();
-    } else {
-      setErrorMessage(res.error || "Incorrect ID or Password");
+    setIsLoading(true);
+    setErrorMessage("");
+    try {
+      const res = await AdminAuthService.login(adminId, password, true);
+      if (res.success) {
+        onLoginSuccess();
+      } else {
+        setErrorMessage(res.error || "Incorrect ID or Password");
+      }
+    } catch {
+      setErrorMessage("Authentication error occurred. Please try again.");
+    } finally {
+      setIsLoading(false);
     }
-  };
-
-  const handleOneClickLogin = () => {
-    setAdminId(AdminAuthService.getAdminId());
-    setPassword(AdminAuthService.getAdminPassword());
-    setTimeout(() => {
-      const res = AdminAuthService.login(AdminAuthService.getAdminId(), AdminAuthService.getAdminPassword(), true);
-      if (res.success) onLoginSuccess();
-    }, 100);
   };
 
   return (
@@ -544,7 +543,6 @@ function AdminLogin({ onLoginSuccess }: { onLoginSuccess: () => void }) {
           
           {/* Logo with Steam Animation & Depth */}
           <div className="relative mx-auto flex h-18 w-18 items-center justify-center rounded-3xl gold-gradient-bg text-warm-brown shadow-[0_8px_30px_rgba(245,185,85,0.4)] animate-float-3d">
-            {/* Steam Wisps */}
             <span className="absolute -top-3 left-3 h-3 w-1 rounded-full bg-warm-brown/70 animate-coffee-steam-1" />
             <span className="absolute -top-4 right-4 h-3.5 w-1 rounded-full bg-warm-brown/80 animate-coffee-steam-2" />
             <Coffee className="h-9 w-9 text-warm-brown transition-transform hover:scale-110 duration-300" />
@@ -552,7 +550,7 @@ function AdminLogin({ onLoginSuccess }: { onLoginSuccess: () => void }) {
 
           <div className="space-y-1">
             <h2 className="font-heading text-3xl font-black text-white tracking-tight">Toronto Cafe POS</h2>
-            <p className="text-xs text-white/60">Baldwin Village · 7 Baldwin St Staff Portal</p>
+            <p className="text-xs text-white/60">Baldwin Village · Staff & Management Portal</p>
           </div>
 
           {errorMessage && (
@@ -561,30 +559,14 @@ function AdminLogin({ onLoginSuccess }: { onLoginSuccess: () => void }) {
             </div>
           )}
 
-          {/* 1-CLICK INSTANT LOGIN BUTTON WITH CREMA SHIMMER */}
-          <button
-            type="button"
-            onClick={handleOneClickLogin}
-            className="group relative overflow-hidden btn-3d-gold w-full h-14 rounded-2xl font-heading font-black text-sm text-warm-brown flex items-center justify-center gap-2 cursor-pointer shadow-xl hover:scale-103 transition-all"
-          >
-            <span className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/80 to-transparent animate-coffee-shimmer pointer-events-none" />
-            <Sparkles className="h-5 w-5 animate-spin-slow" />
-            <span>⚡ 1-Click Instant Staff Login</span>
-          </button>
-
-          <div className="relative flex py-1 items-center">
-            <div className="flex-grow border-t border-white/10"></div>
-            <span className="flex-shrink mx-4 text-[10px] text-white/40 font-bold tracking-widest uppercase">OR ENTER ID & PASSWORD</span>
-            <div className="flex-grow border-t border-white/10"></div>
-          </div>
-
           <form onSubmit={handleLogin} className="space-y-4 text-left">
             <div className="space-y-1">
               <label className="text-xs font-bold text-white/70">Staff Admin ID</label>
               <Input
                 type="text"
                 required
-                placeholder="admin@torontocafe.ca"
+                autoComplete="username"
+                placeholder="Enter Staff ID / Email"
                 value={adminId}
                 onChange={(e) => setAdminId(e.target.value)}
                 className="bg-white/5 border-white/15 rounded-2xl text-white text-xs sm:text-sm h-12 focus:border-butter/60 transition-colors"
@@ -597,7 +579,8 @@ function AdminLogin({ onLoginSuccess }: { onLoginSuccess: () => void }) {
                 <Input
                   type={showPassword ? "text" : "password"}
                   required
-                  placeholder="••••••••••••"
+                  autoComplete="current-password"
+                  placeholder="Enter Password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="bg-white/5 border-white/15 rounded-2xl text-white text-xs sm:text-sm h-12 pr-10 focus:border-butter/60 transition-colors"
@@ -606,6 +589,7 @@ function AdminLogin({ onLoginSuccess }: { onLoginSuccess: () => void }) {
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3.5 top-1/2 -translate-y-1/2 text-white/40 hover:text-white cursor-pointer transition-colors"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -614,9 +598,10 @@ function AdminLogin({ onLoginSuccess }: { onLoginSuccess: () => void }) {
 
             <button
               type="submit"
-              className="w-full h-12 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 text-white font-bold text-sm cursor-pointer transition-all hover:scale-102"
+              disabled={isLoading}
+              className="w-full h-12 rounded-2xl bg-butter text-warm-brown font-extrabold text-sm cursor-pointer transition-all hover:scale-102 hover:brightness-105 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
             >
-              Sign In to POS
+              {isLoading ? "Verifying..." : "Sign In to POS"}
             </button>
           </form>
 
@@ -1991,7 +1976,7 @@ function SimpleSecurityTab({ onLogout }: { onLogout: () => void }) {
   const [confirmPass, setConfirmPass] = useState("");
   const [msg, setMsg] = useState("");
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newPass.length < 12) {
       setMsg("⚠️ Password must be at least 12 characters");
@@ -2002,10 +1987,14 @@ function SimpleSecurityTab({ onLogout }: { onLogout: () => void }) {
       return;
     }
 
-    AdminAuthService.updateCredentials(AdminAuthService.getAdminId(), newPass);
-    setMsg("✅ Master Password updated successfully!");
-    setNewPass("");
-    setConfirmPass("");
+    const res = await AdminAuthService.updateCredentials(AdminAuthService.getAdminId(), newPass);
+    if (res.success) {
+      setMsg("✅ Master Password updated and securely encrypted!");
+      setNewPass("");
+      setConfirmPass("");
+    } else {
+      setMsg(res.error || "⚠️ Failed to update password");
+    }
   };
 
   return (

@@ -23,7 +23,6 @@ import {
   ExternalLink,
   Volume2,
   Check,
-  ShieldCheck,
   ShoppingBag,
 } from "lucide-react";
 
@@ -1770,15 +1769,6 @@ function Footer() {
           <p>© {new Date().getFullYear()} Toronto Cafe. All rights reserved. Handcrafted with ❤️ in Baldwin Village.</p>
 
           <div className="flex items-center gap-5">
-            <Link
-              to="/admin"
-              className="hover:text-butter transition-colors inline-flex items-center gap-1.5 font-bold text-foreground/80 hover:text-butter"
-              title="Staff Admin Portal"
-            >
-              <ShieldCheck className="h-4 w-4 text-butter" />
-              <span>Staff Admin</span>
-            </Link>
-            <span>·</span>
             <a href="#menu" className="hover:text-butter transition-colors">
               Dietary & Allergen Guide
             </a>
