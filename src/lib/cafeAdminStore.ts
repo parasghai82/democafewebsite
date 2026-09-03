@@ -228,7 +228,7 @@ const DEFAULT_SETTINGS: CafeSettings = {
   announcement: "🌿 Sunny Patio Open All Day · Fresh Cardamom Bakes at 7:30 AM",
   showAnnouncement: true,
   phone: "(416) 977-1998",
-  whatsappNumber: "+14169771998",
+  whatsappNumber: "1234567890",
   address: "7 Baldwin St, Baldwin Village, Toronto, ON M5T 1L7",
   hoursMonFri: "8:00 AM – 7:00 PM",
   hoursSatSun: "9:00 AM – 8:00 PM",
@@ -639,6 +639,9 @@ export class CafeAdminStore {
       const data = localStorage.getItem(STORE_KEYS.SETTINGS);
       if (!data) return DEFAULT_SETTINGS;
       const parsed = JSON.parse(data);
+      if (parsed.whatsappNumber === "+14169771998" || parsed.whatsappNumber === "14169771998") {
+        parsed.whatsappNumber = "1234567890";
+      }
       return { ...DEFAULT_SETTINGS, ...parsed };
     } catch {
       return DEFAULT_SETTINGS;
@@ -657,8 +660,12 @@ export class CafeAdminStore {
   }
 
   static getWhatsAppCleanNumber(): string {
-    const raw = this.getSettings().whatsappNumber || "14169771998";
-    return raw.replace(/[^0-9]/g, "") || "14169771998";
+    const raw = this.getSettings().whatsappNumber || "1234567890";
+    const clean = raw.replace(/[^0-9]/g, "");
+    if (clean === "14169771998" || !clean) {
+      return "1234567890";
+    }
+    return clean;
   }
 
   static getWhatsAppLink(message?: string): string {
