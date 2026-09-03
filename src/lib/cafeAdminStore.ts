@@ -227,8 +227,8 @@ const DEFAULT_SETTINGS: CafeSettings = {
   statusOverride: "auto",
   announcement: "🌿 Sunny Patio Open All Day · Fresh Cardamom Bakes at 7:30 AM",
   showAnnouncement: true,
-  phone: "(416) 977-1998",
-  whatsappNumber: "1234567890",
+  phone: "(647) 679-6375",
+  whatsappNumber: "+16476796375",
   address: "7 Baldwin St, Baldwin Village, Toronto, ON M5T 1L7",
   hoursMonFri: "8:00 AM – 7:00 PM",
   hoursSatSun: "9:00 AM – 8:00 PM",
@@ -639,8 +639,12 @@ export class CafeAdminStore {
       const data = localStorage.getItem(STORE_KEYS.SETTINGS);
       if (!data) return DEFAULT_SETTINGS;
       const parsed = JSON.parse(data);
-      if (parsed.whatsappNumber === "+14169771998" || parsed.whatsappNumber === "14169771998") {
-        parsed.whatsappNumber = "1234567890";
+      if (
+        parsed.whatsappNumber === "+14169771998" ||
+        parsed.whatsappNumber === "14169771998" ||
+        parsed.whatsappNumber === "1234567890"
+      ) {
+        parsed.whatsappNumber = "+16476796375";
       }
       return { ...DEFAULT_SETTINGS, ...parsed };
     } catch {
@@ -660,10 +664,10 @@ export class CafeAdminStore {
   }
 
   static getWhatsAppCleanNumber(): string {
-    const raw = this.getSettings().whatsappNumber || "1234567890";
+    const raw = this.getSettings().whatsappNumber || "16476796375";
     const clean = raw.replace(/[^0-9]/g, "");
-    if (clean === "14169771998" || !clean) {
-      return "1234567890";
+    if (clean === "14169771998" || clean === "1234567890" || !clean) {
+      return "16476796375";
     }
     return clean;
   }
