@@ -10,6 +10,7 @@ import {
   MessageCircle,
   Coffee,
   Check,
+  AlertTriangle,
 } from "lucide-react";
 import {
   Dialog,
@@ -22,6 +23,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { CafeAdminStore, type TableBooking } from "@/lib/cafeAdminStore";
+import { IpRateLimiter } from "@/lib/ipRateLimiter";
 
 interface TableBookingModalProps {
   children?: React.ReactNode;
@@ -39,10 +41,32 @@ export function TableBookingModal({ children, defaultFloor = "Any Available Spac
   const [floorArea, setFloorArea] = useState<TableBooking["floorArea"]>(defaultFloor);
   const [specialRequest, setSpecialRequest] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [banError, setBanError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent, viaWhatsApp: boolean = false) => {
+  React.useEffect(() => {
+    if (open) {
+      IpRateLimiter.checkBanStatus().then((status) => {
+        if (status.isBanned) {
+          setBanError(
+            `🚫 Security Lockout: Multiple rapid submissions detected from your IP (${status.ip}). Submissions are blocked for 1 hour (${status.remainingMinutes}m remaining).`
+          );
+        } else {
+          setBanError(null);
+        }
+      });
+    }
+  }, [open]);
+
+  const handleSubmit = async (e: React.FormEvent, viaWhatsApp: boolean = false) => {
     e.preventDefault();
     if (!name || !phone) return;
+
+    // Continuous spam prevention (1-Hour Ban)
+    const rateCheck = await IpRateLimiter.recordSubmission("Table Reservation");
+    if (!rateCheck.allowed) {
+      setBanError(rateCheck.error || "Too many submissions. Your IP is blocked for 1 hour.");
+      return;
+    }
 
     const bookingDate = date || new Date().toISOString().split("T")[0];
 
@@ -242,11 +266,23 @@ export function TableBookingModal({ children, defaultFloor = "Any Available Spac
               />
             </div>
 
+            {/* BAN WARNING BANNER */}
+            {banError && (
+              <div className="p-3.5 rounded-2xl bg-red-500/20 border border-red-500/40 text-red-200 text-xs font-bold flex items-start gap-2.5 animate-pulse">
+                <AlertTriangle className="h-4 w-4 text-red-400 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-extrabold text-red-300">Submission Blocked</p>
+                  <p className="text-[11px] text-red-200/90 font-normal mt-0.5">{banError}</p>
+                </div>
+              </div>
+            )}
+
             {/* ACTION BUTTONS */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2">
               <button
                 type="submit"
-                className="btn-3d-gold h-11 rounded-xl font-bold text-xs text-warm-brown flex items-center justify-center gap-2 cursor-pointer shadow-md"
+                disabled={Boolean(banError)}
+                className="btn-3d-gold h-11 rounded-xl font-bold text-xs text-warm-brown flex items-center justify-center gap-2 cursor-pointer shadow-md disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <Check className="h-4 w-4" />
                 <span>Confirm Reservation</span>
@@ -254,8 +290,9 @@ export function TableBookingModal({ children, defaultFloor = "Any Available Spac
 
               <button
                 type="button"
+                disabled={Boolean(banError)}
                 onClick={(e) => handleSubmit(e, true)}
-                className="h-11 rounded-xl font-bold text-xs text-white bg-[#25D366] hover:bg-[#20bd5a] flex items-center justify-center gap-2 cursor-pointer shadow-md transition-all hover:scale-102"
+                className="h-11 rounded-xl font-bold text-xs text-white bg-[#25D366] hover:bg-[#20bd5a] flex items-center justify-center gap-2 cursor-pointer shadow-md transition-all hover:scale-102 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <MessageCircle className="h-4 w-4 fill-white text-[#25D366]" />
                 <span>Book via WhatsApp</span>

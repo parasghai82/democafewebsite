@@ -75,6 +75,7 @@ import {
   evaluatePasswordStrength,
   type SecurityAuditLog,
 } from "@/lib/adminAuth";
+import { IpRateLimiter, type BannedRecord } from "@/lib/ipRateLimiter";
 import {
   CafeAdminStore,
   type MenuItem,
@@ -2040,6 +2041,43 @@ function SimpleSecurityTab({ onLogout }: { onLogout: () => void }) {
   const [newStaffPass, setNewStaffPass] = useState("");
   const [staffMsg, setStaffMsg] = useState("");
 
+  const [bannedList, setBannedList] = useState<BannedRecord[]>(() => IpRateLimiter.getBannedList());
+  const [manualIp, setManualIp] = useState("");
+  const [manualReason, setManualReason] = useState("");
+  const [firewallMsg, setFirewallMsg] = useState("");
+
+  const refreshBans = () => {
+    setBannedList(IpRateLimiter.getBannedList());
+  };
+
+  useEffect(() => {
+    const handleBans = () => refreshBans();
+    window.addEventListener("toronto_cafe_ip_banned", handleBans);
+    window.addEventListener("toronto_cafe_ip_unbanned", handleBans);
+    return () => {
+      window.removeEventListener("toronto_cafe_ip_banned", handleBans);
+      window.removeEventListener("toronto_cafe_ip_unbanned", handleBans);
+    };
+  }, []);
+
+  const handleUnban = (ip: string) => {
+    IpRateLimiter.unbanIp(ip);
+    refreshBans();
+    setFirewallMsg(`✅ IP ${ip} unbanned successfully!`);
+    setTimeout(() => setFirewallMsg(""), 3000);
+  };
+
+  const handleManualBan = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!manualIp) return;
+    IpRateLimiter.manualBan(manualIp, manualReason || "Blocked manually by Super Admin");
+    setManualIp("");
+    setManualReason("");
+    refreshBans();
+    setFirewallMsg(`🚫 IP ${manualIp} banned for 1 hour.`);
+    setTimeout(() => setFirewallMsg(""), 3000);
+  };
+
   const handleSaveSuper = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newSuperPass.length < 12) {
@@ -2189,7 +2227,106 @@ function SimpleSecurityTab({ onLogout }: { onLogout: () => void }) {
         </form>
       </div>
 
-      {/* 3. Security Audit Logs */}
+      {/* 3. Anti-Spam Firewall & 1-Hour Banned IPs */}
+      <div className="p-6 rounded-3xl border border-white/10 bg-[#1B140F] space-y-4 shadow-xl">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h3 className="font-heading font-black text-sm text-red-400 uppercase tracking-wider flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-red-400" />
+              3. Anti-Spam Firewall (1-Hour Banned IPs)
+            </h3>
+            <p className="text-[11px] text-white/50">
+              Users who continuously fill forms from the same IP are automatically banned for 1 hour.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={refreshBans}
+            className="text-[11px] text-butter hover:underline flex items-center gap-1 font-bold cursor-pointer"
+          >
+            <RefreshCw className="h-3 w-3" />
+            Refresh
+          </button>
+        </div>
+
+        {firewallMsg && (
+          <div className="p-3 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-bold">
+            {firewallMsg}
+          </div>
+        )}
+
+        {/* Current Active Banned IPs */}
+        <div className="space-y-2">
+          {bannedList.length === 0 ? (
+            <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 text-center text-xs text-white/40">
+              🛡️ No IPs are currently banned. Your forms and website are spam-free!
+            </div>
+          ) : (
+            bannedList.map((ban) => {
+              const remainingMin = Math.max(1, Math.ceil((ban.bannedUntil - Date.now()) / (60 * 1000)));
+              return (
+                <div
+                  key={ban.ip}
+                  className="p-3 rounded-2xl bg-red-500/10 border border-red-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5"
+                >
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-bold text-xs text-red-300">{ban.ip}</span>
+                      <span className="px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 text-[10px] font-black uppercase">
+                        {remainingMin} min left
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-white/60 mt-0.5">{ban.reason}</p>
+                    <p className="text-[10px] text-white/40">
+                      Banned on: {new Date(ban.bannedAt).toLocaleTimeString()} · Expires: {new Date(ban.bannedUntil).toLocaleTimeString()}
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleUnban(ban.ip)}
+                    className="h-8 px-3 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-black text-xs font-extrabold cursor-pointer transition-colors shrink-0"
+                  >
+                    Unban IP
+                  </button>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Manual Ban Form */}
+        <form onSubmit={handleManualBan} className="pt-2 border-t border-white/10 grid grid-cols-1 sm:grid-cols-12 gap-2">
+          <div className="sm:col-span-4">
+            <Input
+              type="text"
+              placeholder="IP Address to ban..."
+              value={manualIp}
+              onChange={(e) => setManualIp(e.target.value)}
+              className="bg-white/5 border-white/15 rounded-xl text-white text-xs h-9"
+            />
+          </div>
+          <div className="sm:col-span-5">
+            <Input
+              type="text"
+              placeholder="Reason (optional)"
+              value={manualReason}
+              onChange={(e) => setManualReason(e.target.value)}
+              className="bg-white/5 border-white/15 rounded-xl text-white text-xs h-9"
+            />
+          </div>
+          <div className="sm:col-span-3">
+            <button
+              type="submit"
+              className="w-full h-9 rounded-xl bg-red-500 hover:bg-red-600 text-white font-bold text-xs cursor-pointer transition-colors"
+            >
+              Ban for 1 Hr
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {/* 4. Security Audit Logs */}
       <div className="p-6 rounded-3xl border border-white/10 bg-[#1B140F] space-y-3 shadow-xl">
         <h3 className="font-heading font-black text-sm text-white uppercase tracking-wider flex items-center gap-2">
           <Clock className="h-4 w-4 text-butter" />

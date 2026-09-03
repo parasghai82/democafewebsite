@@ -10,6 +10,7 @@ import {
   Clock,
   Send,
   Utensils,
+  AlertTriangle,
 } from "lucide-react";
 import {
   Dialog,
@@ -21,6 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { CafeAdminStore, type CafeOrderItem, type MenuItem } from "@/lib/cafeAdminStore";
+import { IpRateLimiter } from "@/lib/ipRateLimiter";
 
 export function CartOrderDrawer() {
   const [open, setOpen] = useState(false);
@@ -32,6 +34,21 @@ export function CartOrderDrawer() {
   const [pickupTime, setPickupTime] = useState("In 15 Minutes");
   const [notes, setNotes] = useState("");
   const [submittedOrder, setSubmittedOrder] = useState<string | null>(null);
+  const [banError, setBanError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (open) {
+      IpRateLimiter.checkBanStatus().then((status) => {
+        if (status.isBanned) {
+          setBanError(
+            `🚫 Security Lockout: Multiple rapid submissions detected from your IP (${status.ip}). Submissions are blocked for 1 hour (${status.remainingMinutes}m remaining).`
+          );
+        } else {
+          setBanError(null);
+        }
+      });
+    }
+  }, [open]);
 
   // Detect URL ?table= query parameter on scan
   useEffect(() => {
@@ -104,9 +121,16 @@ export function CartOrderDrawer() {
   const total = subtotal + tax;
   const totalItemCount = cart.reduce((sum, item) => sum + item.quantity, 0);
 
-  const handleSubmitOrder = (e: React.FormEvent, viaWhatsApp = false) => {
+  const handleSubmitOrder = async (e: React.FormEvent, viaWhatsApp = false) => {
     e.preventDefault();
     if (!name || !phone || cart.length === 0) return;
+
+    // Rate limit check
+    const rateCheck = await IpRateLimiter.recordSubmission("Online Cart Order");
+    if (!rateCheck.allowed) {
+      setBanError(rateCheck.error || "Too many submissions. Your IP is blocked for 1 hour.");
+      return;
+    }
 
     const newOrder = CafeAdminStore.addOrder({
       customerName: name,
@@ -393,10 +417,22 @@ export function CartOrderDrawer() {
                 <span className="font-heading font-bold text-base text-butter">${total.toFixed(2)} CAD</span>
               </div>
 
+              {/* BAN WARNING BANNER */}
+              {banError && (
+                <div className="p-3.5 rounded-2xl bg-red-500/20 border border-red-500/40 text-red-200 text-xs font-bold flex items-start gap-2.5 animate-pulse">
+                  <AlertTriangle className="h-4 w-4 text-red-400 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-extrabold text-red-300">Ordering Blocked</p>
+                    <p className="text-[11px] text-red-200/90 font-normal mt-0.5">{banError}</p>
+                  </div>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="submit"
-                  className="btn-3d-gold h-11 rounded-xl font-bold text-xs text-warm-brown flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+                  disabled={Boolean(banError)}
+                  className="btn-3d-gold h-11 rounded-xl font-bold text-xs text-warm-brown flex items-center justify-center gap-1.5 cursor-pointer shadow-md disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <Send className="h-3.5 w-3.5" />
                   <span>Place Order</span>
@@ -404,8 +440,9 @@ export function CartOrderDrawer() {
 
                 <button
                   type="button"
+                  disabled={Boolean(banError)}
                   onClick={(e) => handleSubmitOrder(e, true)}
-                  className="h-11 rounded-xl font-bold text-xs text-white bg-[#25D366] hover:bg-[#20bd5a] flex items-center justify-center gap-1.5 cursor-pointer shadow-md transition-all"
+                  className="h-11 rounded-xl font-bold text-xs text-white bg-[#25D366] hover:bg-[#20bd5a] flex items-center justify-center gap-1.5 cursor-pointer shadow-md transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <MessageCircle className="h-3.5 w-3.5 fill-white text-[#25D366]" />
                   <span>WhatsApp</span>

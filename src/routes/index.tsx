@@ -24,7 +24,9 @@ import {
   Volume2,
   Check,
   ShoppingBag,
+  AlertTriangle,
 } from "lucide-react";
+import { IpRateLimiter } from "@/lib/ipRateLimiter";
 
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
@@ -1231,6 +1233,7 @@ function VisitUs() {
 function Events() {
   const [open, setOpen] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [banError, setBanError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: "",
     phone: "",
@@ -1241,9 +1244,32 @@ function Events() {
     notes: "",
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (open) {
+      IpRateLimiter.checkBanStatus().then((status) => {
+        if (status.isBanned) {
+          setBanError(
+            `🚫 Security Lockout: Multiple rapid submissions detected from your IP (${status.ip}). Submissions are blocked for 1 hour (${status.remainingMinutes}m remaining).`
+          );
+        } else {
+          setBanError(null);
+        }
+      });
+    }
+  }, [open]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name) return;
+
+    // 1-Hour Ban Protection
+    const rateCheck = await IpRateLimiter.recordSubmission(
+      formData.eventType === "catering" ? "Catering Request" : "Private Event Buyout"
+    );
+    if (!rateCheck.allowed) {
+      setBanError(rateCheck.error || "Too many submissions. Your IP is blocked for 1 hour.");
+      return;
+    }
 
     // 1. Record in Admin Panel
     CafeAdminStore.addFormSubmission({
@@ -1455,13 +1481,25 @@ function Events() {
                     />
                   </div>
 
+                  {/* BAN WARNING BANNER */}
+                  {banError && (
+                    <div className="p-3.5 rounded-2xl bg-red-500/20 border border-red-500/40 text-red-200 text-xs font-bold flex items-start gap-2.5 animate-pulse">
+                      <AlertTriangle className="h-4 w-4 text-red-400 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-extrabold text-red-300">Submission Blocked</p>
+                        <p className="text-[11px] text-red-200/90 font-normal mt-0.5">{banError}</p>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="pt-2 flex justify-end gap-3">
                     <Button type="button" variant="outline" onClick={() => setOpen(false)} className="rounded-full">
                       Cancel
                     </Button>
                     <button
                       type="submit"
-                      className="btn-3d-gold rounded-full px-6 py-2.5 font-bold text-warm-brown flex items-center gap-2 cursor-pointer shadow-md"
+                      disabled={Boolean(banError)}
+                      className="btn-3d-gold rounded-full px-6 py-2.5 font-bold text-warm-brown flex items-center gap-2 cursor-pointer shadow-md disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       <Send className="h-4 w-4" />
                       <span>Submit & Send to WhatsApp</span>
@@ -1481,8 +1519,31 @@ function Footer() {
   const status = useCafeStatus();
   const [newsletterEmail, setNewsletterEmail] = useState("");
   const [newsletterSubmitted, setNewsletterSubmitted] = useState(false);
+  const [newsletterError, setNewsletterError] = useState<string | null>(null);
   const [isMusicPlaying, setIsMusicPlaying] = useState(true);
   const [localTime, setLocalTime] = useState("");
+
+  useEffect(() => {
+    IpRateLimiter.checkBanStatus().then((res) => {
+      if (res.isBanned) {
+        setNewsletterError(`Blocked for 1 hour (${res.remainingMinutes}m remaining).`);
+      }
+    });
+  }, []);
+
+  const handleNewsletterSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newsletterEmail) return;
+
+    const rateCheck = await IpRateLimiter.recordSubmission("VIP Coffee Club");
+    if (!rateCheck.allowed) {
+      setNewsletterError(rateCheck.error || "Too many submissions. IP blocked for 1 hour.");
+      return;
+    }
+
+    CafeAdminStore.addSubscriber(newsletterEmail);
+    setNewsletterSubmitted(true);
+  };
 
   useEffect(() => {
     const updateTime = () => {
@@ -1500,12 +1561,6 @@ function Footer() {
     return () => clearInterval(timer);
   }, []);
 
-  const handleNewsletterSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newsletterEmail) return;
-    CafeAdminStore.addSubscriber(newsletterEmail);
-    setNewsletterSubmitted(true);
-  };
 
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -1550,26 +1605,36 @@ function Footer() {
                   </div>
                 </div>
               ) : (
-                <form onSubmit={handleNewsletterSubmit} className="flex flex-col sm:flex-row gap-2.5">
-                  <div className="relative flex-1">
-                    <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      type="email"
-                      required
-                      placeholder="Enter your email..."
-                      value={newsletterEmail}
-                      onChange={(e) => setNewsletterEmail(e.target.value)}
-                      className="pl-10 h-12 bg-background/90 border-border/80 rounded-2xl focus-visible:ring-butter shadow-inner text-sm"
-                    />
-                  </div>
-                  <button
-                    type="submit"
-                    className="btn-3d-gold h-12 px-6 rounded-2xl font-bold text-sm text-warm-brown shrink-0 cursor-pointer shadow-md flex items-center justify-center gap-2"
-                  >
-                    <span>Join Club</span>
-                    <Send className="h-3.5 w-3.5" />
-                  </button>
-                </form>
+                <div className="space-y-2">
+                  {newsletterError && (
+                    <div className="p-2.5 rounded-xl bg-red-500/20 border border-red-500/30 text-red-200 text-xs font-semibold flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4 text-red-400 shrink-0" />
+                      <span>{newsletterError}</span>
+                    </div>
+                  )}
+                  <form onSubmit={handleNewsletterSubmit} className="flex flex-col sm:flex-row gap-2.5">
+                    <div className="relative flex-1">
+                      <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        type="email"
+                        required
+                        disabled={Boolean(newsletterError)}
+                        placeholder="Enter your email..."
+                        value={newsletterEmail}
+                        onChange={(e) => setNewsletterEmail(e.target.value)}
+                        className="pl-10 h-12 bg-background/90 border-border/80 rounded-2xl focus-visible:ring-butter shadow-inner text-sm disabled:opacity-40"
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={Boolean(newsletterError)}
+                      className="btn-3d-gold h-12 px-6 rounded-2xl font-bold text-sm text-warm-brown shrink-0 cursor-pointer shadow-md flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      <span>Join Club</span>
+                      <Send className="h-3.5 w-3.5" />
+                    </button>
+                  </form>
+                </div>
               )}
             </div>
           </div>
