@@ -163,7 +163,7 @@ export function CartOrderDrawer() {
     const itemList = cart
       .map((i) => `• ${i.quantity}x ${i.name} ($${(i.price * i.quantity).toFixed(2)})`)
       .join("\n");
-    const msg = encodeURIComponent(
+    const msg =
       `Hello Toronto Cafe! ☕ Here is my new order ${newOrder.orderNumber}:\n\n` +
       `${itemList}\n\n` +
       `• Order Type: ${orderType} (${orderType === "Dine-In (Table)" ? tableNumber : pickupTime})\n` +
@@ -171,9 +171,8 @@ export function CartOrderDrawer() {
       `• HST (13%): $${tax.toFixed(2)}\n` +
       `• Total: $${total.toFixed(2)} CAD\n` +
       `• Guest: ${name} (${phone})\n` +
-      `• Notes: ${notes || "None"}`
-    );
-    window.open(`https://wa.me/14169771998?text=${msg}`, "_blank");
+      `• Notes: ${notes || "None"}`;
+    window.open(CafeAdminStore.getWhatsAppLink(msg), "_blank");
 
     setSubmittedOrder(newOrder.orderNumber);
     setTimeout(() => {

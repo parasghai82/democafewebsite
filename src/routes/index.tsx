@@ -1288,7 +1288,7 @@ function Events() {
     });
 
     // 2. Dispatch complete details to WhatsApp
-    const msg = encodeURIComponent(
+    const msg =
       `Hello Toronto Cafe! ☕ Here is an Event / Catering Inquiry from the website:\n\n` +
       `• Name: ${formData.name}\n` +
       `• Phone: ${formData.phone || "Not provided"}\n` +
@@ -1296,9 +1296,8 @@ function Events() {
       `• Service: ${formData.eventType}\n` +
       `• Guests: ${formData.guests}\n` +
       `• Date: ${formData.date || "Flexible"}\n` +
-      `• Notes: ${formData.notes || "None"}`
-    );
-    window.open(`https://wa.me/14169771998?text=${msg}`, "_blank");
+      `• Notes: ${formData.notes || "None"}`;
+    window.open(CafeAdminStore.getWhatsAppLink(msg), "_blank");
 
     setSubmitted(true);
   };

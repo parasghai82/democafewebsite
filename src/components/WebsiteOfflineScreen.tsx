@@ -77,7 +77,7 @@ export function WebsiteOfflineScreen() {
         {/* Action Buttons */}
         <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
           <a
-            href="https://wa.me/14169771998"
+            href={CafeAdminStore.getWhatsAppLink()}
             target="_blank"
             rel="noopener noreferrer"
             className="w-full sm:w-auto h-12 px-6 rounded-2xl bg-[#25D366] hover:bg-[#20bd5a] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg transition-transform hover:scale-105"

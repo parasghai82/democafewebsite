@@ -24,8 +24,7 @@ export function WhatsAppQuickWidget() {
       });
     }
 
-    const encoded = encodeURIComponent(textToSend);
-    window.open(`https://wa.me/14169771998?text=${encoded}`, "_blank");
+    window.open(CafeAdminStore.getWhatsAppLink(textToSend), "_blank");
     setIsOpen(false);
     setCustomMsg("");
   };

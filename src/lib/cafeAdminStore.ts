@@ -655,4 +655,15 @@ export class CafeAdminStore {
     const settings = this.getSettings();
     this.saveSettings({ ...settings, isWebsiteOnline: isOnline });
   }
+
+  static getWhatsAppCleanNumber(): string {
+    const raw = this.getSettings().whatsappNumber || "14169771998";
+    return raw.replace(/[^0-9]/g, "") || "14169771998";
+  }
+
+  static getWhatsAppLink(message?: string): string {
+    const cleanNum = this.getWhatsAppCleanNumber();
+    if (!message) return `https://wa.me/${cleanNum}`;
+    return `https://wa.me/${cleanNum}?text=${encodeURIComponent(message)}`;
+  }
 }

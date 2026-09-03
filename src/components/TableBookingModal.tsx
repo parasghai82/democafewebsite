@@ -89,7 +89,7 @@ export function TableBookingModal({ children, defaultFloor = "Any Available Spac
     });
 
     // 2. Send complete details to WhatsApp
-    const message = encodeURIComponent(
+    const message =
       `Hello Toronto Cafe! ☕ Here is my Table Reservation from the website:\n\n` +
       `• Guest Name: ${name}\n` +
       `• Phone Number: ${phone}\n` +
@@ -98,9 +98,8 @@ export function TableBookingModal({ children, defaultFloor = "Any Available Spac
       `• Reservation Date: ${bookingDate}\n` +
       `• Time: ${time}\n` +
       `• Preferred Seating: ${floorArea}\n` +
-      `• Special Notes: ${specialRequest || "None"}`
-    );
-    window.open(`https://wa.me/14169771998?text=${message}`, "_blank");
+      `• Special Notes: ${specialRequest || "None"}`;
+    window.open(CafeAdminStore.getWhatsAppLink(message), "_blank");
 
     setSubmitted(true);
     setTimeout(() => {

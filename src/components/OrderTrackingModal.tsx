@@ -580,11 +580,11 @@ export function OrderTrackingModal({ defaultOrderNumber }: { defaultOrderNumber?
 
                 {/* WhatsApp Support Button */}
                 <a
-                  href={`https://wa.me/14169771998?text=${encodeURIComponent(
+                  href={CafeAdminStore.getWhatsAppLink(
                     activeOrder.status === "Cancelled" && activeOrder.cancelledBy === "Admin"
                       ? `Hi Toronto Cafe! ☕ I received a notification that my order ${activeOrder.orderNumber} was cancelled by staff. Please assist me.`
                       : `Hi Toronto Cafe! ☕ I have a question regarding my order ${activeOrder.orderNumber}.`
-                  )}`}
+                  )}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="h-10 rounded-xl bg-[#25D366]/20 hover:bg-[#25D366]/30 text-[#25D366] font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer border border-[#25D366]/30"
