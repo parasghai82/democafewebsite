@@ -1396,7 +1396,7 @@ function Events() {
                         id="phone"
                         type="tel"
                         required
-                        placeholder="(647) 679-6375"
+                        placeholder="(416) 977-1998"
                         value={formData.phone}
                         onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                         className="bg-background/80 border-border focus-visible:ring-butter rounded-xl"

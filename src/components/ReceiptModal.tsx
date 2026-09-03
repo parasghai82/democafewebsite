@@ -36,7 +36,7 @@ export function ReceiptModal({
           <p className="text-[11px] text-white/60">
             7 Baldwin St, Baldwin Village, Toronto, ON
           </p>
-          <p className="text-[10px] text-white/40">Tel: (647) 679-6375 · HST #: 83920-1998-RT0001</p>
+          <p className="text-[10px] text-white/40">Tel: (416) 977-1998 · HST #: 83920-1998-RT0001</p>
         </DialogHeader>
 
         {/* THERMAL RECEIPT CONTAINER */}

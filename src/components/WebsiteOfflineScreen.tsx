@@ -87,11 +87,11 @@ export function WebsiteOfflineScreen() {
           </a>
 
           <a
-            href="tel:16476796375"
+            href="tel:4169771998"
             className="w-full sm:w-auto h-12 px-6 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/20 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all hover:scale-105"
           >
             <Phone className="h-4 w-4" />
-            <span>Call (647) 679-6375</span>
+            <span>Call (416) 977-1998</span>
           </a>
         </div>
 
